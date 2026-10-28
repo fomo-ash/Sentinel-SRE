@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current foundation has typed incident state, a one-node LangGraph intake workflow with in-memory checkpoints, and a local Go health service. Investigation and remediation are planned work; the current code is not production ready.
+Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current foundation has typed incident state, input validation, a deterministic classification baseline, in-memory checkpoints, and a local Go health service. Investigation and remediation are planned work; the current code is not production ready.
 
 ## Prerequisites
 
