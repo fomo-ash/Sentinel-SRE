@@ -14,6 +14,8 @@ Each phase is a separate reviewable change. The current milestone ends after Pha
 - **Learn:** node ownership and state updates. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** `nodes/classify.py` extracts recognizable symptoms and assigns `sev1` only for explicit widespread outage, `sev2` for stated degradation, `sev3` for stated isolated impact, and `unknown` when impact is absent or ambiguous. Widespread impact takes priority over degraded or isolated impact. Ignore obvious negated phrases; treat unresolved conflicting statements conservatively. Return only `severity` and `symptoms`.
 - **Tests / done:** fixed cases cover widespread, degraded, isolated, database, networking, unknown impact, negation, and conflicting statements. The graph preserves original incident facts.
+- **Evaluation fixture:** `python/evaluation/incidents_v1.jsonl` provides 24 fixed, labeled synthetic reports. Keep labels hidden from classifier inputs and record baseline metrics before comparing models.
+- **Recorded baseline:** `python/evaluation/BASELINE_REVIEW.md` freezes the v1 labels and documents 19/24 severity accuracy, 100% symptom precision, 75% symptom recall, and nine cases with any mismatch.
 - **Dependencies:** Python standard library regex only. **Out of scope:** LLM inference and a production severity policy.
 - **Limitations:** keyword matching misses paraphrases and unseen patterns; local negation handling cannot reliably resolve complex grammar, contradictory reports, or temporal changes. `unknown` is preferable to invented certainty. This classifier is not production grade.
 

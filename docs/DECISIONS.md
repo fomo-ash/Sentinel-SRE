@@ -8,5 +8,6 @@
 - **Separate LLM interpretation and policy:** structured model output will report interpreted impact and uncertainty; deterministic policy will enforce severity. Model output cannot invent metrics.
 - **Historical retrieval is context:** similar past incidents can guide questions but cannot prove current impact or cause. Start with a local sentence-transformer and in-memory ranking; defer pgvector until evaluation supports it.
 - **Evaluation before claims:** compare baseline, LLM, and LLM plus retrieval on fixed synthetic labels, with latency and failure measurements alongside quality metrics.
+- **Freeze evaluation v1:** keep the 24-case dataset and its reference labels unchanged after the baseline review; make a new version for corrections so comparisons remain reproducible.
 - **Single graph:** conditional routing and bounded cycles are sufficient for this workflow; no multi-agent abstraction is needed.
 
