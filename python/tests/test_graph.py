@@ -9,5 +9,8 @@ def test_intake_sets_initial_state_and_checkpoints():
         config,
     )
     assert result["severity"] == "unknown"
+    assert result["classification_source"] == "baseline"
+    assert result["failure_reason"] is None
+    assert result["model_interpretation"] is None
     assert result["evidence"] == []
     assert graph.get_state(config).values == result

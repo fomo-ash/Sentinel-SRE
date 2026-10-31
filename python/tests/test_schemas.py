@@ -1,7 +1,7 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from sentinel.schemas import classifySchema, validate_incident
+from sentinel.schemas import InvestigationState, classifySchema, validate_incident
 
 
 def test_incident_requires_nonempty_fields():
@@ -51,3 +51,36 @@ def test_classification_schema_rejects_out_of_range_confidence(confidence):
     }
     with pytest.raises(ValidationError, match="confidence"):
         TypeAdapter(classifySchema).validate_python(result)
+
+
+def test_graph_state_keeps_model_interpretation_separate_from_policy_severity():
+    interpretation = {
+        "recommended_severity": "sev1",
+        "symptoms": [],
+        "rationale": "The report describes an outage.",
+        "affected_components": ["api"],
+        "reported_impact": ["All users are affected."],
+        "source_references": ["All users are affected"],
+        "uncertainties": [],
+    }
+    state = {
+        "incident": {"id": "inc-1", "service": "api", "summary": "Outage"},
+        "model_interpretation": interpretation,
+        "classification_source": "llm",
+        "failure_reason": None,
+        "final_severity": "unknown",
+    }
+    assert TypeAdapter(InvestigationState).validate_python(state) == state
+
+
+def test_graph_state_rejects_unrecognized_failure_source_and_provider_object():
+    state = {
+        "incident": {"id": "inc-1", "service": "api", "summary": "Outage"},
+        "classification_source": "maybe",
+        "failure_reason": "other",
+        "model_interpretation": object(),
+    }
+    with pytest.raises(ValidationError) as error:
+        TypeAdapter(InvestigationState).validate_python(state)
+    for field in ("classification_source", "failure_reason", "model_interpretation"):
+        assert field in str(error.value)

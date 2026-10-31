@@ -43,5 +43,5 @@ From `services/mock-service/`, run `make run` then `curl http://127.0.0.1:8080/h
 
 Copy `.env.example` to `.env` only when you need local overrides. Python reads `SENTINEL_MOCK_SERVICE_URL` from the process environment; this foundation does not load `.env` automatically.
 
-See the [LangGraph implementation phases](docs/ROADMAP.md) for the next work and [architecture](docs/ARCHITECTURE.md) for code ownership.
+See the [current status and file checklist](docs/STATUS.md), [LangGraph implementation phases](docs/ROADMAP.md), and [architecture](docs/ARCHITECTURE.md).
 

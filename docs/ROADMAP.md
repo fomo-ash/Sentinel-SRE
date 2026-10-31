@@ -1,6 +1,6 @@
 # Sentinel implementation roadmap
 
-Each phase is a separate reviewable change. The current milestone ends after Phase 1. Later phases are plans, not implemented features. Use fixed synthetic fixtures and record measured results before claiming improvements.
+Each phase is a separate reviewable change. Phase 1 is complete and Phase 2 has a validated fake-model boundary; later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current file-by-file checklist. Use fixed synthetic fixtures and record measured results before claiming improvements.
 
 ## Phase 0 — Foundation (complete)
 
@@ -23,7 +23,7 @@ Each phase is a separate reviewable change. The current milestone ends after Pha
 
 - **Learn:** model injection and validated structured output. [LangChain structured output](https://docs.langchain.com/oss/python/langchain/structured-output).
 - **Tasks:** create a classifier output schema distinct from `InvestigationState`: severity recommendation, symptoms, affected components, reported impact, uncertainty or missing information, and source references where available. Use a provider-neutral model interface. Apply severity policy in a separate deterministic step. Do not invent affected-user counts or metrics.
-- **Prepared boundary:** `classifySchema` is separate from graph state; `interpret_incident` accepts an injected model, validates its output, and makes one repair attempt for invalid structured output. Graph integration, severity policy mapping, transient-error retries, fallback, and a real provider remain to be implemented.
+- **Prepared boundary:** `classifySchema` is separate from graph state; `interpret_incident` accepts an injected model, validates its output, and makes one repair attempt for invalid structured output. Graph state now records classification source, failure reason, model interpretation, and final policy severity separately. The model node retries transient failures at most three times with backoff, then records a deterministic baseline fallback. `severity_policy.py` maps baseline impact or exact report spans to final severity in isolation. Optional graph routing, a real provider, and model evaluation remain to be implemented.
 - **Implementation order:** (1) define a grounded model prompt and one provider adapter; (2) validate the structured response; (3) enforce impact-to-severity policy separately; (4) add bounded failure handling; (5) wire the optional model path into LangGraph; (6) evaluate it against the frozen dataset before enabling it by default.
 - **Invalid structured output:** retry once with the original incident description, schema requirements, and validation error. Require impact claims to be traceable to the description. If the retry is invalid, use the deterministic baseline and record `classification_source = "baseline_fallback"` plus the failure reason.
 - **Transient provider failure:** use a separate bounded retry with backoff for timeouts, rate limits, or temporary unavailability; then use the baseline. Never loop indefinitely. When fallback impact is ambiguous, retain `unknown` and require human review rather than inventing a severity.
@@ -47,7 +47,7 @@ Each phase is a separate reviewable change. The current milestone ends after Pha
 ## Phase 5 — Diagnosis and evaluation
 
 - **Learn:** evidence-grounded conclusions and comparative evaluation. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
-- **Tasks:** produce diagnosis with current-incident evidence references and unresolved questions. Create a fixed labeled synthetic evaluation set. Compare deterministic baseline, LLM without retrieval, and LLM with retrieval separately.
+- **Tasks:** produce diagnosis with current-incident evidence references and unresolved questions. Extend the existing fixed synthetic evaluation set with separate held-out cases. Compare deterministic baseline, LLM without retrieval, and LLM with retrieval separately.
 - **Tests / done:** measure severity accuracy, symptom precision/recall, Retrieval Recall@k and ranking quality, diagnosis usefulness from retrieved history, structured-output validity, tool-call counts, latency, and failure rates. Document datasets, labels, and results; claim no improvement without measurements.
 - **Dependencies:** pytest and existing components. **Out of scope:** treating retrieved cases as current evidence.
 

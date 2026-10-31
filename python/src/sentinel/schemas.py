@@ -6,6 +6,14 @@ from pydantic import Field
 from typing_extensions import TypedDict
 
 Severity = Literal["unknown", "sev1", "sev2", "sev3"]
+ClassificationSource = Literal["baseline", "llm", "baseline_fallback"]
+ClassificationFailure = Literal[
+    "invalid_output",
+    "timeout",
+    "provider_unavailable",
+    "rate_limited",
+    "provider_error",
+]
 
 
 class IncidentReport(TypedDict):
@@ -40,7 +48,12 @@ class classifySchema(TypedDict):
 class InvestigationState(TypedDict):
     incident: IncidentReport
     severity: NotRequired[Severity]
+    # A model recommendation cannot become the policy decision by assignment.
+    final_severity: NotRequired[Severity]
     symptoms: NotRequired[list[str]]
+    model_interpretation: NotRequired[classifySchema | None]
+    classification_source: NotRequired[ClassificationSource]
+    failure_reason: NotRequired[ClassificationFailure | None]
     hypotheses: NotRequired[list[Hypothesis]]
     evidence: NotRequired[list[Evidence]]
     diagnosis: NotRequired[str]
