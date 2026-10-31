@@ -1,6 +1,9 @@
 """Raw incident facts and the state shared by graph nodes."""
 
-from typing import Literal, NotRequired, TypedDict
+from typing import Annotated, Literal, NotRequired
+
+from pydantic import Field
+from typing_extensions import TypedDict
 
 Severity = Literal["unknown", "sev1", "sev2", "sev3"]
 
@@ -19,6 +22,19 @@ class Evidence(TypedDict):
 class Hypothesis(TypedDict):
     cause: str
     rationale: str
+
+
+class classifySchema(TypedDict):
+    """Structured interpretation returned by a future classifier model."""
+
+    recommended_severity: Severity
+    symptoms: list[str]
+    confidence: NotRequired[Annotated[float, Field(ge=0, le=1)]]
+    rationale: str
+    affected_components: list[str]
+    reported_impact: list[str]
+    source_references: list[str]
+    uncertainties: list[str]
 
 
 class InvestigationState(TypedDict):
