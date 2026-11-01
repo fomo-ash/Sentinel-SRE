@@ -23,6 +23,20 @@ def test_classification_schema_accepts_valid_output():
     assert TypeAdapter(classifySchema).validate_python(result) == result
 
 
+def test_classification_schema_rejects_unrecognized_symptom():
+    result = {
+        "recommended_severity": "unknown",
+        "symptoms": ["root_cause_guess"],
+        "rationale": "Impact is unclear.",
+        "affected_components": [],
+        "reported_impact": [],
+        "source_references": [],
+        "uncertainties": ["User impact is unknown."],
+    }
+    with pytest.raises(ValidationError, match="symptoms"):
+        TypeAdapter(classifySchema).validate_python(result)
+
+
 def test_classification_schema_requires_correct_uncertainty_field():
     result = {
         "recommended_severity": "unknown",

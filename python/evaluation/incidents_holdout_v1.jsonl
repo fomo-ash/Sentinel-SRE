@@ -1,0 +1,8 @@
+{"id":"holdout-001","service":"checkout","summary":"Every checkout request is failing across all regions.","expected_severity":"sev1","expected_symptoms":["service_outage"]}
+{"id":"holdout-002","service":"dashboard","summary":"Nobody can load the customer dashboard; every page request fails.","expected_severity":"sev1","expected_symptoms":["service_outage"]}
+{"id":"holdout-003","service":"uploads","summary":"About 30% of upload attempts time out, while remaining uploads complete.","expected_severity":"sev2","expected_symptoms":["high_latency"]}
+{"id":"holdout-004","service":"edge","summary":"One availability zone cannot serve traffic; the other two zones are healthy.","expected_severity":"sev2","expected_symptoms":[]}
+{"id":"holdout-005","service":"api","summary":"Only one internal canary probe returned HTTP 500; customer requests are healthy.","expected_severity":"sev3","expected_symptoms":["elevated_errors"]}
+{"id":"holdout-006","service":"catalog","summary":"A single customer account sees slow requests; everyone else is unaffected.","expected_severity":"sev3","expected_symptoms":["high_latency"]}
+{"id":"holdout-007","service":"orders","summary":"Queue depth alert fired, but request impact has not been checked.","expected_severity":"unknown","expected_symptoms":[]}
+{"id":"holdout-008","service":"auth","summary":"One operator says all users are affected; another says no customers are affected.","expected_severity":"unknown","expected_symptoms":[]}

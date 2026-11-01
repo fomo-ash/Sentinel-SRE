@@ -2,9 +2,9 @@
 
 The Python package owns investigation state and LangGraph orchestration. The Go service will provide simulated incident data over local HTTP. Later, an MCP adapter will expose diagnostics to the graph. No production infrastructure is connected.
 
-Current flow: `START -> receive_incident -> classify -> END`. Intake validates an incident report and initializes empty investigation fields. The classifier uses transparent rules and records `classification_source = "baseline"` alongside severity and symptoms. The caller supplies a `thread_id` so `InMemorySaver` can checkpoint execution. This is a baseline, not an incident investigator yet.
+Current flow: `START -> receive_incident -> classify -> severity_policy -> END` by default. An explicit `classification_mode = "llm"` routes from `classify` through `llm_classify` before policy when a model is injected. Intake validates an incident report and initializes empty investigation fields. The baseline classifier records `classification_source = "baseline"` alongside severity and symptoms. The caller supplies a `thread_id` so `InMemorySaver` can checkpoint execution. This is classification, not an incident investigator yet.
 
-`IncidentReport` records the immutable incoming facts. `InvestigationState` carries severity, symptoms, model interpretation, classification source and failure reason, final policy severity, hypotheses, evidence, and diagnosis as the workflow grows. Evidence stores source and observation separately so a future diagnosis can cite what was observed. The model classifier and severity policy are tested in isolation; the graph still uses only the baseline.
+`IncidentReport` records the immutable incoming facts. `InvestigationState` carries severity, symptoms, model interpretation, classification source and failure reason, final policy severity, hypotheses, evidence, and diagnosis as the workflow grows. Evidence stores source and observation separately so a future diagnosis can cite what was observed. The OpenAI adapter can be injected into the optional model route; the default path remains local and needs no API key.
 
 Target flow: `incident input -> baseline and/or LLM classification -> historical retrieval -> investigation plan -> diagnostic tools -> evidence evaluation -> conditional loop -> diagnosis -> human approval -> simulated remediation -> verification -> report`.
 

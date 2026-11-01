@@ -46,6 +46,13 @@ _SCOPE_PATTERNS: tuple[tuple[Severity, tuple[str, ...]], ...] = (
 
 
 def _negated_scope(summary: str, scope: Severity) -> bool:
+    if scope == "sev1" and re.search(
+        r"\bno\s+(?:customers|users|requests)\s+(?:are\s+)?"
+        r"(?:affected|failing)\b",
+        summary,
+        re.I,
+    ):
+        return True
     for severity, patterns in _SCOPE_PATTERNS:
         if severity != scope:
             continue

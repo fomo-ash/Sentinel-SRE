@@ -22,3 +22,20 @@ The set deliberately mixes baseline-friendly phrases with paraphrases and contra
 ## Baseline evaluator
 
 From `python/`, run `python evaluation/evaluate_baseline.py`. It passes only `{id, service, summary}` into the classifier and reports severity accuracy, micro-averaged symptom precision and recall, and mismatched IDs. Treat `unknown` as a real class, not a skipped case. The fixed results and case-by-case review are in [BASELINE_REVIEW.md](BASELINE_REVIEW.md).
+
+## Phase 2 model comparison
+
+`evaluate_classification.py` compares the baseline graph route with the injected model route. It passes only `id`, `service`, and `summary` to either route; expected labels and annotator fields remain inside the evaluator. Each case and route gets a separate checkpoint thread. Results include final policy severity accuracy, micro symptom precision and recall, structured-output validity after any repair, fallback rate and reasons, mean and p95 latency, and provider-reported token usage. An optional dollar estimate uses rates supplied by the caller. It is an estimate, not a billing record: cached tokens, unreported failed calls, and provider pricing adjustments may differ.
+
+Provider calls require the explicit `--live` flag. With an ignored local `.env` in the repository root, run from `python/`:
+
+```sh
+python evaluation/evaluate_classification.py --live --env-file ../.env \
+  --dataset evaluation/incidents_v1.jsonl \
+  --output evaluation/results_phase2_luna_v1.json \
+  --input-usd-per-million 0.10 --output-usd-per-million 0.50
+```
+
+The example rates are for the recorded GPT-6 Luna Standard evaluation as of 2026-10-31; check the [current OpenAI pricing page](https://developers.openai.com/api/docs/pricing) for later runs. Do not put a key in this document, a result file, or a shell command. The evaluator reads only `OPENAI_API_KEY` and `SENTINEL_OPENAI_MODEL` from an explicitly supplied env file and never writes their values to results.
+
+`incidents_holdout_v1.jsonl` is a separate eight-case synthetic challenge set with broader impact wording and two labels in each severity class. Its labels were created for this project and have not been independently reviewed, so treat it as exploratory rather than evidence of generalization. The original `incidents_v1.jsonl` remains frozen. The recorded comparisons and limits are in [PHASE2_REVIEW.md](PHASE2_REVIEW.md).

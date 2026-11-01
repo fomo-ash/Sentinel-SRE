@@ -21,6 +21,13 @@ from sentinel.nodes.severity_policy import severity_policy
             "conflicting_impact",
         ),
         (
+            "All users are affected, but no customers are affected.",
+            "sev1",
+            None,
+            "unknown",
+            "conflicting_impact",
+        ),
+        (
             "Every customer cannot reach the service.",
             "unknown",
             {

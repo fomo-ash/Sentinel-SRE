@@ -1,6 +1,6 @@
 # Sentinel implementation roadmap
 
-Each phase is a separate reviewable change. Phase 1 is complete and Phase 2 has a validated fake-model boundary; later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current file-by-file checklist. Use fixed synthetic fixtures and record measured results before claiming improvements.
+Each phase is a separate reviewable change. Phases 0–2 are implemented and Phase 2 is evaluated on small synthetic sets; its model route remains opt-in. Later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current checklist, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2 evaluation review](../python/evaluation/PHASE2_REVIEW.md) for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
 
 ## Phase 0 — Foundation (complete)
 
@@ -9,7 +9,7 @@ Each phase is a separate reviewable change. Phase 1 is complete and Phase 2 has 
 - **Tests / done:** invalid inputs fail; graph output and checkpoint are inspectable; Go health handler responds.
 - **Dependencies:** LangGraph for orchestration; Go standard library for HTTP. **Out of scope:** durable storage and incident investigation.
 
-## Phase 1 — Deterministic classification baseline (current)
+## Phase 1 — Deterministic classification baseline (complete)
 
 - **Learn:** node ownership and state updates. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** `nodes/classify.py` extracts recognizable symptoms and assigns `sev1` only for explicit widespread outage, `sev2` for stated degradation, `sev3` for stated isolated impact, and `unknown` when impact is absent or ambiguous. Widespread impact takes priority over degraded or isolated impact. Ignore obvious negated phrases; treat unresolved conflicting statements conservatively. Return only `severity` and `symptoms`.
@@ -19,11 +19,11 @@ Each phase is a separate reviewable change. Phase 1 is complete and Phase 2 has 
 - **Dependencies:** Python standard library regex only. **Out of scope:** LLM inference and a production severity policy.
 - **Limitations:** keyword matching misses paraphrases and unseen patterns; local negation handling cannot reliably resolve complex grammar, contradictory reports, or temporal changes. `unknown` is preferable to invented certainty. This classifier is not production grade.
 
-## Phase 2 — LLM classification
+## Phase 2 — LLM classification (implemented; opt-in)
 
 - **Learn:** model injection and validated structured output. [LangChain structured output](https://docs.langchain.com/oss/python/langchain/structured-output).
 - **Tasks:** create a classifier output schema distinct from `InvestigationState`: severity recommendation, symptoms, affected components, reported impact, uncertainty or missing information, and source references where available. Use a provider-neutral model interface. Apply severity policy in a separate deterministic step. Do not invent affected-user counts or metrics.
-- **Prepared boundary:** `classifySchema` is separate from graph state; `interpret_incident` accepts an injected model, validates its output, and makes one repair attempt for invalid structured output. Graph state now records classification source, failure reason, model interpretation, and final policy severity separately. The model node retries transient failures at most three times with backoff, then records a deterministic baseline fallback. `severity_policy.py` maps baseline impact or exact report spans to final severity in isolation. Optional graph routing, a real provider, and model evaluation remain to be implemented.
+- **Implemented boundary:** `classifySchema` is separate from graph state; `interpret_incident` accepts an injected model, validates its output, and makes one repair attempt for invalid structured output. Graph state records classification source, failure reason, model interpretation, and final policy severity separately. The model node retries transient failures at most three times with backoff, then records a deterministic baseline fallback. `severity_policy.py` maps baseline impact or exact report spans to final severity. An optional OpenAI adapter supplies a grounded system prompt and structured response through LangChain. The graph uses explicit model routing, with the baseline as default. Live GPT-6 Luna comparisons on frozen v1 and a separate challenge set are recorded in [PHASE2_REVIEW.md](../python/evaluation/PHASE2_REVIEW.md); the challenge result does not support a generalization claim.
 - **Implementation order:** (1) define a grounded model prompt and one provider adapter; (2) validate the structured response; (3) enforce impact-to-severity policy separately; (4) add bounded failure handling; (5) wire the optional model path into LangGraph; (6) evaluate it against the frozen dataset before enabling it by default.
 - **Invalid structured output:** retry once with the original incident description, schema requirements, and validation error. Require impact claims to be traceable to the description. If the retry is invalid, use the deterministic baseline and record `classification_source = "baseline_fallback"` plus the failure reason.
 - **Transient provider failure:** use a separate bounded retry with backoff for timeouts, rate limits, or temporary unavailability; then use the baseline. Never loop indefinitely. When fallback impact is ambiguous, retain `unknown` and require human review rather than inventing a severity.

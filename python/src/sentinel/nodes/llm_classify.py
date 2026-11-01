@@ -133,6 +133,7 @@ def build_llm_classify_node(
             # Keep interpretation separate; the policy node will choose final severity.
             return {
                 "model_interpretation": interpretation,
+                "symptoms": interpretation["symptoms"],
                 "classification_source": "llm",
                 "failure_reason": None,
             }

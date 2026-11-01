@@ -1,0 +1,266 @@
+{
+  "count": 8,
+  "baseline": {
+    "severity_accuracy": 0.25,
+    "symptom_precision": 1.0,
+    "symptom_recall": 0.4,
+    "mean_latency_ms": 9.110106626394554,
+    "p95_latency_ms": 52.27719999675173,
+    "mismatched_ids": [
+      "holdout-001",
+      "holdout-002",
+      "holdout-003",
+      "holdout-004",
+      "holdout-005",
+      "holdout-006"
+    ]
+  },
+  "model": {
+    "severity_accuracy": 0.375,
+    "symptom_precision": 0.6666666666666666,
+    "symptom_recall": 0.8,
+    "mean_latency_ms": 3443.2013912501134,
+    "p95_latency_ms": 4998.164427001029,
+    "mismatched_ids": [
+      "holdout-001",
+      "holdout-002",
+      "holdout-003",
+      "holdout-004",
+      "holdout-005",
+      "holdout-006"
+    ],
+    "structured_output_validity_rate": 1.0,
+    "fallback_rate": 0.0,
+    "failure_reasons": {},
+    "reported_token_usage": {
+      "input_tokens": 2707,
+      "output_tokens": 2305,
+      "calls_with_usage": 8
+    },
+    "estimated_cost_usd": 0.0014232000000000001
+  },
+  "cases": [
+    {
+      "id": "holdout-001",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 52.27719999675173
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "Every checkout request is failing across all regions."
+        ],
+        "latency_ms": 3950.6416039948817
+      }
+    },
+    {
+      "id": "holdout-002",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.900446008425206
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "\u201cNobody can load the customer dashboard; every page request fails.\u201d"
+        ],
+        "latency_ms": 2907.3575350048486
+      }
+    },
+    {
+      "id": "holdout-003",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.9934060003142804
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "About 30% of upload attempts time out, while remaining uploads complete."
+        ],
+        "latency_ms": 3106.1559270019643
+      }
+    },
+    {
+      "id": "holdout-004",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.7646950038615614
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev2",
+        "source_references": [
+          "One availability zone cannot serve traffic; the other two zones are healthy."
+        ],
+        "latency_ms": 2628.8103150000097
+      }
+    },
+    {
+      "id": "holdout-005",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.1859379960224032
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [
+          "Only one internal canary probe returned HTTP 500"
+        ],
+        "latency_ms": 4281.767099004355
+      }
+    },
+    {
+      "id": "holdout-006",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "high_latency"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.666717002284713
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "high_latency"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "A single customer account sees slow requests"
+        ],
+        "latency_ms": 2996.9392439961666
+      }
+    },
+    {
+      "id": "holdout-007",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.100289002759382
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [],
+        "latency_ms": 2675.7749789976515
+      }
+    },
+    {
+      "id": "holdout-008",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.992162000737153
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [
+          "\"all users are affected\"",
+          "\"no customers are affected\""
+        ],
+        "latency_ms": 4998.164427001029
+      }
+    }
+  ],
+  "run": {
+    "recorded_at_utc": "2026-10-31T21:22:36.997179+00:00",
+    "dataset": "evaluation/incidents_holdout_v1.jsonl",
+    "model_id": "gpt-6-luna",
+    "input_usd_per_million": 0.1,
+    "output_usd_per_million": 0.5
+  }
+}

@@ -87,6 +87,7 @@ def test_llm_node_preserves_interpretation_separately_from_final_severity():
     result = build_llm_classify_node(FakeModel(valid_response()))(_state())
     assert result == {
         "model_interpretation": valid_response(),
+        "symptoms": ["high_latency"],
         "classification_source": "llm",
         "failure_reason": None,
     }

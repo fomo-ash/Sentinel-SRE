@@ -1,0 +1,728 @@
+{
+  "count": 24,
+  "baseline": {
+    "severity_accuracy": 0.7916666666666666,
+    "symptom_precision": 1.0,
+    "symptom_recall": 0.75,
+    "mean_latency_ms": 6.068333625080413,
+    "p95_latency_ms": 6.835414009401575,
+    "mismatched_ids": [
+      "eval-001",
+      "eval-002",
+      "eval-005",
+      "eval-008",
+      "eval-009",
+      "eval-011",
+      "eval-012",
+      "eval-016",
+      "eval-017"
+    ]
+  },
+  "model": {
+    "severity_accuracy": 1.0,
+    "symptom_precision": 0.8260869565217391,
+    "symptom_recall": 0.7916666666666666,
+    "mean_latency_ms": 3290.479971749543,
+    "p95_latency_ms": 5160.879939998267,
+    "mismatched_ids": [
+      "eval-002",
+      "eval-005",
+      "eval-008",
+      "eval-014",
+      "eval-017",
+      "eval-020"
+    ],
+    "structured_output_validity_rate": 1.0,
+    "fallback_rate": 0.0,
+    "failure_reasons": {},
+    "reported_token_usage": {
+      "input_tokens": 8129,
+      "output_tokens": 7054,
+      "calls_with_usage": 24
+    },
+    "estimated_cost_usd": 0.0043399
+  },
+  "cases": [
+    {
+      "id": "eval-001",
+      "baseline": {
+        "severity": "sev1",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 63.51094700221438
+      },
+      "model": {
+        "severity": "sev1",
+        "symptoms": [
+          "service_outage",
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "Complete outage in the API",
+          "all users are affected",
+          "requests return 503"
+        ],
+        "latency_ms": 3049.531968004885
+      }
+    },
+    {
+      "id": "eval-002",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 4.396944990730844
+      },
+      "model": {
+        "severity": "sev1",
+        "symptoms": [
+          "elevated_errors",
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "Every payment attempt is failing with a gateway timeout across all regions."
+        ],
+        "latency_ms": 3072.0919820014387
+      }
+    },
+    {
+      "id": "eval-003",
+      "baseline": {
+        "severity": "sev1",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 4.547666001599282
+      },
+      "model": {
+        "severity": "sev1",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "Entire service is down",
+          "nobody can sign in"
+        ],
+        "latency_ms": 3450.0935550022405
+      }
+    },
+    {
+      "id": "eval-004",
+      "baseline": {
+        "severity": "sev1",
+        "symptoms": [
+          "database_connectivity",
+          "service_outage"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.21804299892392
+      },
+      "model": {
+        "severity": "sev1",
+        "symptoms": [
+          "database_connectivity",
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "All requests are failing because the database connection cannot be established."
+        ],
+        "latency_ms": 3466.717738992884
+      }
+    },
+    {
+      "id": "eval-005",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "network_connectivity"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.36312000581529
+      },
+      "model": {
+        "severity": "sev1",
+        "symptoms": [
+          "network_connectivity",
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "DNS failure prevents every customer from reaching the service."
+        ],
+        "latency_ms": 3078.2948409905657
+      }
+    },
+    {
+      "id": "eval-006",
+      "baseline": {
+        "severity": "sev1",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.647029006970115
+      },
+      "model": {
+        "severity": "sev1",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev1",
+        "source_references": [
+          "all requests are failing for every customer"
+        ],
+        "latency_ms": 3154.499215001124
+      }
+    },
+    {
+      "id": "eval-007",
+      "baseline": {
+        "severity": "sev2",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.342847994645126
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "\"Elevated error rate on the API; some requests still succeed.\""
+        ],
+        "latency_ms": 2872.3950370040257
+      }
+    },
+    {
+      "id": "eval-008",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.7970510020386428
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev2",
+        "source_references": [
+          "Search is degraded: roughly one in five queries times out."
+        ],
+        "latency_ms": 2730.002276992309
+      }
+    },
+    {
+      "id": "eval-009",
+      "baseline": {
+        "severity": "sev2",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.5113689955323935
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "\u201cIntermittent failures in payments; retries succeed for most customers.\u201d"
+        ],
+        "latency_ms": 3404.345064001973
+      }
+    },
+    {
+      "id": "eval-010",
+      "baseline": {
+        "severity": "sev2",
+        "symptoms": [
+          "elevated_errors",
+          "high_latency"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 6.835414009401575
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "elevated_errors",
+          "high_latency"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "\"elevated error rate and slow requests are affecting a subset of traffic.\""
+        ],
+        "latency_ms": 2675.600207003299
+      }
+    },
+    {
+      "id": "eval-011",
+      "baseline": {
+        "severity": "sev2",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.9243129974929616
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "database_connectivity",
+          "elevated_errors"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev2",
+        "source_references": [
+          "many requests are failing while others complete"
+        ],
+        "latency_ms": 3028.986719000386
+      }
+    },
+    {
+      "id": "eval-012",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "network_connectivity"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.768729991861619
+      },
+      "model": {
+        "severity": "sev2",
+        "symptoms": [
+          "network_connectivity"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev2",
+        "source_references": [
+          "Network failure affects one availability zone"
+        ],
+        "latency_ms": 3872.0684290019562
+      }
+    },
+    {
+      "id": "eval-013",
+      "baseline": {
+        "severity": "sev3",
+        "symptoms": [
+          "high_latency"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.203512998879887
+      },
+      "model": {
+        "severity": "sev3",
+        "symptoms": [
+          "high_latency"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "One user reports high latency",
+          "other users appear unaffected"
+        ],
+        "latency_ms": 2304.552600005991
+      }
+    },
+    {
+      "id": "eval-014",
+      "baseline": {
+        "severity": "sev3",
+        "symptoms": [
+          "elevated_errors"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.164841007674113
+      },
+      "model": {
+        "severity": "sev3",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "A single request failed with HTTP 500; subsequent requests succeeded."
+        ],
+        "latency_ms": 3202.6769270014483
+      }
+    },
+    {
+      "id": "eval-015",
+      "baseline": {
+        "severity": "sev3",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.3366790012223646
+      },
+      "model": {
+        "severity": "sev3",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [
+          "\"Isolated issue with a single product page; the rest of the catalog works.\""
+        ],
+        "latency_ms": 3214.3394710001303
+      }
+    },
+    {
+      "id": "eval-016",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.945022002677433
+      },
+      "model": {
+        "severity": "sev3",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "Only one test account cannot sign in"
+        ],
+        "latency_ms": 3565.145532003953
+      }
+    },
+    {
+      "id": "eval-017",
+      "baseline": {
+        "severity": "sev3",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.6073230003239587
+      },
+      "model": {
+        "severity": "sev3",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "A single request timed out for one customer; later payments completed."
+        ],
+        "latency_ms": 3724.0874279959826
+      }
+    },
+    {
+      "id": "eval-018",
+      "baseline": {
+        "severity": "sev3",
+        "symptoms": [
+          "network_connectivity"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.2843209919519722
+      },
+      "model": {
+        "severity": "sev3",
+        "symptoms": [
+          "network_connectivity"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "sev3",
+        "source_references": [
+          "one internal probe saw connection refused",
+          "customer traffic is healthy"
+        ],
+        "latency_ms": 5226.970083997003
+      }
+    },
+    {
+      "id": "eval-019",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.287863000878133
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [],
+        "latency_ms": 3529.325550000067
+      }
+    },
+    {
+      "id": "eval-020",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "network_connectivity"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.9968969902256504
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [],
+        "latency_ms": 2974.7050300065894
+      }
+    },
+    {
+      "id": "eval-021",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "high_latency"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.365607000887394
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "high_latency"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [
+          "High latency alert fired",
+          "no user impact information is available"
+        ],
+        "latency_ms": 2446.6177379945293
+      }
+    },
+    {
+      "id": "eval-022",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.1838580034673214
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [
+          "service_outage"
+        ],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [
+          "Complete outage reported"
+        ],
+        "latency_ms": 3733.895618992392
+      }
+    },
+    {
+      "id": "eval-023",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 3.547063999576494
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [
+          "All users are affected according to one report"
+        ],
+        "latency_ms": 5160.879939998267
+      }
+    },
+    {
+      "id": "eval-024",
+      "baseline": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "baseline",
+        "failure_reason": null,
+        "structured_output_valid": false,
+        "recommended_severity": null,
+        "source_references": [],
+        "latency_ms": 2.853544006939046
+      },
+      "model": {
+        "severity": "unknown",
+        "symptoms": [],
+        "source": "llm",
+        "failure_reason": null,
+        "structured_output_valid": true,
+        "recommended_severity": "unknown",
+        "source_references": [],
+        "latency_ms": 2033.696369995596
+      }
+    }
+  ],
+  "run": {
+    "recorded_at_utc": "2026-10-31T21:12:59.663058+00:00",
+    "dataset": "evaluation/incidents_v1.jsonl",
+    "model_id": "gpt-6-luna",
+    "input_usd_per_million": 0.1,
+    "output_usd_per_million": 0.5
+  }
+}

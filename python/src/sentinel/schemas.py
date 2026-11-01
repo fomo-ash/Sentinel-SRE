@@ -6,6 +6,13 @@ from pydantic import Field
 from typing_extensions import TypedDict
 
 Severity = Literal["unknown", "sev1", "sev2", "sev3"]
+Symptom = Literal[
+    "database_connectivity",
+    "network_connectivity",
+    "elevated_errors",
+    "high_latency",
+    "service_outage",
+]
 ClassificationSource = Literal["baseline", "llm", "baseline_fallback"]
 ClassificationFailure = Literal[
     "invalid_output",
@@ -36,7 +43,7 @@ class classifySchema(TypedDict):
     """Structured interpretation returned by a future classifier model."""
 
     recommended_severity: Severity
-    symptoms: list[str]
+    symptoms: list[Symptom]
     confidence: NotRequired[Annotated[float, Field(ge=0, le=1)]]
     rationale: str
     affected_components: list[str]
@@ -50,6 +57,7 @@ class InvestigationState(TypedDict):
     severity: NotRequired[Severity]
     # A model recommendation cannot become the policy decision by assignment.
     final_severity: NotRequired[Severity]
+    severity_policy_reason: NotRequired[str]
     symptoms: NotRequired[list[str]]
     model_interpretation: NotRequired[classifySchema | None]
     classification_source: NotRequired[ClassificationSource]
