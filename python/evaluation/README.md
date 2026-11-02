@@ -39,3 +39,20 @@ python evaluation/evaluate_classification.py --live --env-file ../.env \
 The example rates are for the recorded GPT-6 Luna Standard evaluation as of 2026-10-31; check the [current OpenAI pricing page](https://developers.openai.com/api/docs/pricing) for later runs. Do not put a key in this document, a result file, or a shell command. The evaluator reads only `OPENAI_API_KEY` and `SENTINEL_OPENAI_MODEL` from an explicitly supplied env file and never writes their values to results.
 
 `incidents_holdout_v1.jsonl` is a separate eight-case synthetic challenge set with broader impact wording and two labels in each severity class. Its labels were created for this project and have not been independently reviewed, so treat it as exploratory rather than evidence of generalization. The original `incidents_v1.jsonl` remains frozen. The recorded comparisons and limits are in [PHASE2_REVIEW.md](PHASE2_REVIEW.md).
+
+## Phase 3 historical retrieval evaluation
+
+`retrieval_queries_v1.jsonl` contains 21 fixed, paraphrased synthetic queries. Each has one `relevant_ids` label pointing only to `python/history/incidents_v1.jsonl` and a `label_reason` explaining the match. Queries and labels are held outside the history corpus and are never supplied to the embedding model during indexing. Labels were authored for this project and have not had an independent human review; treat results as an exploratory fixture check, not evidence of production retrieval quality.
+
+`evaluate_retrieval.py` validates the labels against history, builds one local in-memory index, and queries it once per case. It reports macro Recall@1/3/5 (the fraction of each query's relevant IDs returned), MRR@1/3/5 (reciprocal rank of the first relevant hit), per-query ranked IDs and cosine scores, failures, and latency. The result also records dataset and history hashes, model name, package version, embedding dimension, and index build time.
+
+From `python/`, install the optional `retrieval` extra, then run:
+
+```sh
+python evaluation/evaluate_retrieval.py \
+  --output evaluation/results_phase3_retrieval_v1.json
+```
+
+The first run may download model weights to the local cache. No OpenAI key is needed. Keep this query set fixed after recording results; create a new version for revised labels or broader scenarios.
+
+The first recorded local-model result and its limitations are in [PHASE3_REVIEW.md](PHASE3_REVIEW.md). If the model host is unavailable and you already have a verified local model directory, pass `--model /path/to/model --model-id sentence-transformers/all-MiniLM-L6-v2`; the evaluator records the local `model.safetensors` hash.

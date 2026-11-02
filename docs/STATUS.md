@@ -1,12 +1,18 @@
 # Sentinel status and file-by-file work list
 
-Updated 2026-10-31. This tracks implemented code, planned work, and the next files to edit. The current application is a simulated-incident foundation, not a production-ready SRE agent. See [ROADMAP.md](ROADMAP.md) for learning objectives and acceptance criteria.
+Updated 2026-11-02. This tracks implemented code, planned work, and the next files to edit. The current application is a simulated-incident foundation, not a production-ready SRE agent. See [ROADMAP.md](ROADMAP.md) for learning objectives and acceptance criteria.
 
 ## Done
 
 - [x] **Foundation:** `python/src/sentinel/schemas.py` defines incident and graph state; `python/src/sentinel/graph.py` validates input and checkpoints the graph in memory. `python/tests/test_schemas.py` and `python/tests/test_graph.py` cover the boundary.
 - [x] **Deterministic baseline:** `python/src/sentinel/nodes/classify.py` extracts known symptoms and assigns conservative severity. `python/tests/test_classify.py` covers impact, negation, and conflicts. It is not a production classifier.
 - [x] **Fixed evaluation set:** `python/evaluation/incidents_v1.jsonl` has 24 labeled synthetic cases. `evaluate_baseline.py`, `BASELINE_REVIEW.md`, and the evaluation tests record 19/24 severity accuracy, 100% symptom precision, and 75% symptom recall on this set. The labels are frozen for comparisons.
+- [x] **Separate history corpus:** `python/history/incidents_v1.jsonl` has 101 fictional resolved incidents with explicit provenance. It supplies Phase 3 data; retrieval implementation and ranking evaluation remain pending.
+- [x] **History validation:** `python/retrieval/history.py` loads JSONL and rejects malformed records, missing fields, duplicate IDs, and missing synthetic provenance. `python/tests/test_history.py` covers the loader and failure paths.
+- [x] **Embedding adapter:** `python/retrieval/embeddings.py` encodes document batches and queries with a local sentence-transformer when the optional `retrieval` extra is installed. Fake-model tests cover shape, input, and failure handling; no model was downloaded in this environment.
+- [x] **In-memory retriever:** `python/retrieval/retriever.py` embeds validated history once and returns top-k cosine matches with the original synthetic provenance. `python/tests/test_retriever.py` covers ranking, stable ties, invalid inputs, vectors, and duplicate history. Independent relevance evaluation remains pending.
+- [x] **Opt-in graph retrieval:** `python/src/sentinel/graph.py` routes through an injected retriever when `retrieval_mode = "history"`, stores matches with provenance, and records a bounded failure outcome without stopping classification. The model receives labeled past context; severity policy still uses the current report. Graph tests cover success, unavailable retriever, malformed matches, and runtime failure.
+- [x] **Fixed retrieval evaluation:** `python/evaluation/retrieval_queries_v1.jsonl` has 21 project-authored relevance labels; `evaluate_retrieval.py` reports Recall@k, MRR@k, failures, latency, and input hashes. A local MiniLM run found the labeled case at rank 1 for 20/21 queries with no failures. [PHASE3_REVIEW.md](../python/evaluation/PHASE3_REVIEW.md) records the miss and limits.
 - [x] **Model boundary:** `python/src/sentinel/schemas.py` has a separate structured classifier output contract. `python/src/sentinel/nodes/llm_classify.py` accepts an injected model, validates output, and makes one repair attempt if the structure is invalid. `python/tests/test_llm_classify.py` covers success and failure paths; live synthetic results are recorded separately from automated tests.
 - [x] **Severity policy:** `python/src/sentinel/nodes/severity_policy.py` retains supported baseline severity and can map exact incident-summary references when the baseline is unknown. `python/tests/test_severity_policy.py` covers supported, unsupported, absent, and conflicting impact. Both graph routes now pass through this policy.
 - [x] **Local Go service:** `services/mock-service/cmd/server/main.go` and `internal/api/health.go` expose `/health` on loopback; `internal/api/health_test.go` contains a handler test. Go tests have not been run in this environment because Go is not installed.
@@ -26,7 +32,6 @@ The implementation checklist is complete. The deterministic path remains the def
 
 | Phase | Main files to edit or add | Deliverable |
 | --- | --- | --- |
-| 3. Historical retrieval | `python/evaluation/` for separate synthetic history; `python/src/sentinel/tools/retrieval.py`; `python/src/sentinel/nodes/retrieve.py`; `python/tests/test_retrieval.py` | Local embeddings, top-k scores, provenance; history remains distinct from current evidence |
 | 4. Diagnostics and loop | `services/mock-service/internal/api/`, `services/mock-service/internal/incidents/`; `python/src/sentinel/tools/diagnostics.py`; `python/src/sentinel/nodes/investigate.py`, `evaluate.py`; `graph.py`; tests | Simulated logs and metrics, bounded conditional investigation loop, tool failure paths |
 | 5. Diagnosis and evaluation | `python/src/sentinel/nodes/diagnose.py`; `schemas.py`; `python/evaluation/`; tests | Evidence-linked diagnosis and measured comparison of baseline, LLM, and retrieval |
 | 6. Approval and remediation | `python/src/sentinel/nodes/approval.py`, `remediate.py`, `verify.py`; `tools/remediation.py`; `graph.py`; Go mock endpoints; tests | Checkpointed human interrupt before allowlisted simulated action, then verification and report |
@@ -34,6 +39,6 @@ The implementation checklist is complete. The deterministic path remains the def
 
 ## Current verification
 
-- As of 2026-10-31, all 61 Python tests pass; Ruff lint and formatting pass, and `pip check` reports no broken requirements. The optional LangChain package initializes locally, and GPT-6 Luna returned structured output in both live synthetic evaluations. Recheck from `python/` with `pytest -q tests`, `ruff check src tests evaluation`, and `ruff format --check src tests evaluation`.
+- As of 2026-11-02, all 95 Python tests pass; Ruff lint and formatting pass across `src`, `tests`, `evaluation`, and `retrieval`, and `pip check` reports no broken requirements. The history loader, embedding adapter, retriever, graph route, and metric evaluator have fake-model tests. A real local MiniLM run and a graph smoke run are recorded in the Phase 3 review. The optional LangChain package initializes locally, and GPT-6 Luna returned structured output in both prior live synthetic classification evaluations. Recheck from `python/` with `pytest -q tests`, `ruff check src tests evaluation retrieval`, and `ruff format --check src tests evaluation retrieval`.
 - Go is not installed in the current environment, so `go test ./...` remains a verification task for `services/mock-service/`.
-- The repository has an optional OpenAI provider adapter and recorded synthetic evaluation. It has no embeddings, vector database, MCP server, remediation path, or persistent checkpointer yet.
+- The repository has an optional OpenAI provider adapter, recorded synthetic classification and retrieval evaluations, and an opt-in graph path through an in-memory historical retrieval index. It has no vector database, MCP server, remediation path, or persistent checkpointer yet.

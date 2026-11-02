@@ -21,6 +21,7 @@ ClassificationFailure = Literal[
     "rate_limited",
     "provider_error",
 ]
+RetrievalFailure = Literal["retriever_error"]
 
 
 class IncidentReport(TypedDict):
@@ -65,6 +66,8 @@ class InvestigationState(TypedDict):
     hypotheses: NotRequired[list[Hypothesis]]
     evidence: NotRequired[list[Evidence]]
     diagnosis: NotRequired[str]
+    historical_matches: NotRequired[list[dict]]
+    retrieval_failure_reason: NotRequired[RetrievalFailure | None]
 
 
 def validate_incident(incident: IncidentReport) -> None:

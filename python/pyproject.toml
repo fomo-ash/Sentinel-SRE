@@ -15,13 +15,15 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = ["langchain>=1.4.7,<1.5", "langchain-openai>=1,<2"]
+retrieval = ["sentence-transformers"]
 dev = ["pytest>=8,<10", "ruff>=0.13,<1"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sentinel"]
+packages = ["src/sentinel", "retrieval"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 88

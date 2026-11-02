@@ -1,0 +1,21 @@
+{"id":"rq-001","query":"Scheduled exports are stuck in a worker backlog and report downloads are late.","relevant_ids":["hist-001"],"label_reason":"The export queue blockage and delayed downloads match the past export-worker case."}
+{"id":"rq-002","query":"Newly published untagged products cannot be found while browsing categories.","relevant_ids":["hist-004"],"label_reason":"Untagged new catalog items missing from category pages match the indexer case."}
+{"id":"rq-003","query":"Localized catalog filters display counts from another language setting.","relevant_ids":["hist-006"],"label_reason":"Locale-specific facet counts match the cache-key case."}
+{"id":"rq-004","query":"A promotion seems to subtract the same discount two times at checkout.","relevant_ids":["hist-015"],"label_reason":"The double promotion discount matches the deduplication case."}
+{"id":"rq-005","query":"Guest shoppers cannot submit a local-format telephone number.","relevant_ids":["hist-016"],"label_reason":"Guest-only phone validation matches the checkout validator case."}
+{"id":"rq-006","query":"A charge was authorized but the payment page still says pending.","relevant_ids":["hist-022"],"label_reason":"Pending status after authorization matches the callback-consumer case."}
+{"id":"rq-007","query":"Repeating a timed-out card attempt creates two temporary authorization holds.","relevant_ids":["hist-024"],"label_reason":"Duplicate holds after retry match the idempotency-key case."}
+{"id":"rq-008","query":"Members of one company fail single sign-on because the audience is wrong.","relevant_ids":["hist-037"],"label_reason":"The tenant-specific SSO audience mismatch matches the cached mapping case."}
+{"id":"rq-009","query":"Users with two open tabs get trapped in a sign-in refresh loop.","relevant_ids":["hist-039"],"label_reason":"Concurrent refresh and login loop match the session-race case."}
+{"id":"rq-010","query":"Abandoned baskets continue to reserve stock long after they expire.","relevant_ids":["hist-042"],"label_reason":"Expired stock reservations after cart abandonment match the scheduler case."}
+{"id":"rq-011","query":"Preorder items are presented as immediately available inventory.","relevant_ids":["hist-048"],"label_reason":"A missing preorder flag matches the availability-badge case."}
+{"id":"rq-012","query":"Customers receive account notifications in a language they did not choose.","relevant_ids":["hist-053"],"label_reason":"Wrong notification language matches the template-cache case."}
+{"id":"rq-013","query":"Alerts arrive during quiet hours when daylight saving time changes.","relevant_ids":["hist-059"],"label_reason":"Daylight transition and quiet hours match the fixed-offset scheduler case."}
+{"id":"rq-014","query":"Searching with diacritics misses products that should match.","relevant_ids":["hist-063"],"label_reason":"Accent normalization mismatch matches the search-analyzer case."}
+{"id":"rq-015","query":"The second page of search results repeats the first page.","relevant_ids":["hist-065"],"label_reason":"Repeated pagination results match the cursor-decoding case."}
+{"id":"rq-016","query":"Large multipart file uploads fail checksum validation at the end.","relevant_ids":["hist-072"],"label_reason":"Multipart assembly and checksum failure match the part-sort case."}
+{"id":"rq-017","query":"A shared file URL breaks when its name contains spaces.","relevant_ids":["hist-078"],"label_reason":"Spaces in shared upload links match the double-encoding case."}
+{"id":"rq-018","query":"Dashboard charts are one day behind despite new events arriving.","relevant_ids":["hist-082"],"label_reason":"Stale analytics charts match the watermark-before-commit case."}
+{"id":"rq-019","query":"Downloaded CSV report columns shift when free text contains commas.","relevant_ids":["hist-087"],"label_reason":"Delimiter handling in report exports matches the CSV quoting case."}
+{"id":"rq-020","query":"Invoice PDF files render with empty pages for some accounts.","relevant_ids":["hist-096"],"label_reason":"Blank invoice PDFs match the optional-footer rendering case."}
+{"id":"rq-021","query":"Changing a subscription plan gives inconsistent prorated cost previews.","relevant_ids":["hist-100"],"label_reason":"Plan-change estimate drift matches the proration-version case."}

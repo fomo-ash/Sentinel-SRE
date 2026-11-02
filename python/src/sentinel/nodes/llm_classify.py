@@ -96,7 +96,9 @@ def interpret_incident(description: str, model: ClassificationModel) -> classify
         # Include the original report so a repair cannot rely on malformed output alone.
         repair_request = (
             "Return a corrected structured classification for the original incident. "
-            "Use only facts supported by its description; do not invent metrics or "
+            "Use only the CURRENT INCIDENT REPORT for impact, symptoms, and source "
+            "quotes. Historical context may only suggest missing questions; it is "
+            "not evidence of the current cause or scope. Do not invent metrics or "
             "affected-user counts. Return every required field in this JSON schema: "
             f"{json.dumps(_classification_adapter.json_schema())}\n"
             f"Original incident description: {description}\n"
@@ -104,6 +106,32 @@ def interpret_incident(description: str, model: ClassificationModel) -> classify
         )
         repaired = model.invoke(repair_request)
         return _classification_adapter.validate_python(repaired)
+
+
+def _classification_input(state: InvestigationState) -> str:
+    """Label retrieved cases as past context, never current evidence."""
+    description = state["incident"]["summary"]
+    matches = state.get("historical_matches") or []
+    if not matches:
+        return description
+
+    history = [
+        {
+            "id": match["id"],
+            "summary": match["historical_incident"]["summary"],
+            "confirmed_cause": match["historical_incident"]["confirmed_cause"],
+            "resolution": match["historical_incident"]["resolution"],
+            "provenance": match["historical_incident"]["provenance"],
+        }
+        for match in matches
+    ]
+    return (
+        "CURRENT INCIDENT REPORT (only source for classification facts and quotes):\n"
+        f"{description}\n\n"
+        "HISTORICAL CONTEXT (synthetic past incidents; use only to suggest "
+        "missing questions, never to infer current impact, severity, or cause):\n"
+        f"{json.dumps(history, ensure_ascii=False)}"
+    )
 
 
 def build_llm_classify_node(
@@ -121,7 +149,7 @@ def build_llm_classify_node(
     def llm_classify(state: InvestigationState) -> dict:
         try:
             interpretation = interpret_incident(
-                state["incident"]["summary"], retrying_model
+                _classification_input(state), retrying_model
             )
         except ValidationError:
             reason: ClassificationFailure = "invalid_output"

@@ -2,6 +2,8 @@
 
 This guide describes the code added for model-assisted classification of **synthetic** incidents. The default graph remains local and deterministic. The optional OpenAI route requires an explicitly injected model and `classification_mode = "llm"`. Neither route authorizes remediation.
 
+Phase 3 adds a separate opt-in `retrieval_mode = "history"` route before classification. It supplies labeled synthetic past cases to the model only as context for missing questions; current-report quotes and deterministic severity policy still govern classification. See [ROADMAP.md](ROADMAP.md) and the [history README](../python/history/README.md) for the newer retrieval path.
+
 ## Data flow
 
 ```mermaid
@@ -47,11 +49,12 @@ The baseline runs first in both routes. A model can add a structured interpretat
 
 | Function | Role |
 | --- | --- |
-| `receive_incident` | Validates the incident and initializes empty symptoms, hypotheses, and evidence plus `unknown` severity. |
+| `receive_incident` | Validates the incident and initializes empty symptoms, hypotheses, evidence, and historical matches plus `unknown` severity. |
 | `classify_baseline` | Calls the Phase 1 rule classifier and records `classification_source = "baseline"`; clears prior model interpretation and failure reason. |
+| `route_history` | Reads `retrieval_mode` from LangGraph configuration. Omitted or `off` skips retrieval; `history` enters the injected retriever node; any other value raises `ValueError`. |
 | `route_classification` | Reads `classification_mode` from LangGraph configuration. Omitted or `deterministic` goes directly to policy; `llm` enters the model node; any other value raises `ValueError`. |
 | `severity_policy_node` | Passes the current report, baseline severity, and optional model interpretation to the deterministic policy. |
-| `build_graph` | Compiles a new graph with an `InMemorySaver`. It accepts an injected model; requesting `llm` mode without one raises an explicit error. Each invocation needs a `thread_id`. |
+| `build_graph` | Compiles a new graph with an `InMemorySaver`. It accepts an injected model and retriever. Requesting `llm` mode without a model or `history` mode without a retriever raises an explicit error. Retrieval errors are recorded and classification continues. Each invocation needs a `thread_id`. |
 
 ### `python/src/sentinel/nodes/classify.py`
 

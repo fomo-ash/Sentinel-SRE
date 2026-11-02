@@ -1,6 +1,6 @@
 # Sentinel implementation roadmap
 
-Each phase is a separate reviewable change. Phases 0–2 are implemented and Phase 2 is evaluated on small synthetic sets; its model route remains opt-in. Later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current checklist, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2 evaluation review](../python/evaluation/PHASE2_REVIEW.md) for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
+Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases 2 and 3 are evaluated on small synthetic sets, and their model and retrieval routes remain opt-in. Later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current checklist, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2](../python/evaluation/PHASE2_REVIEW.md) and [Phase 3](../python/evaluation/PHASE3_REVIEW.md) reviews for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
 
 ## Phase 0 — Foundation (complete)
 
@@ -30,8 +30,9 @@ Each phase is a separate reviewable change. Phases 0–2 are implemented and Pha
 - **Tests / done:** fake-model tests cover valid output, malformed output, unsupported impact claims, one repair retry, exhausted retry, timeout, unavailable provider, fallback source/reason, and `unknown` handling. Record output-validity rate, fallback rate, and latency. Classification never authorizes remediation.
 - **Dependencies:** LangChain model integration and one chosen provider package only when implemented. **Out of scope:** mandatory API keys, autonomous remediation, or replacing policy with model judgment.
 
-## Phase 3 — Historical incidents and semantic retrieval
+## Phase 3 — Historical incidents and semantic retrieval (complete on synthetic fixtures)
 
+- **History corpus and opt-in retrieval:** `python/history/incidents_v1.jsonl` contains 101 fictional incidents with causes, resolutions, impact, and explicit synthetic provenance. `python/retrieval/history.py` validates and loads the corpus; `embeddings.py` encodes service, summary, symptoms, and impact with incoming queries; `retriever.py` ranks top-k matches by cosine score, returning full records with provenance. The graph uses an injected retriever only for `retrieval_mode = "history"`, checkpoints matches, and labels them as past context for optional model classification. Retrieval errors clear matches and allow classification to continue. The corpus is separate from frozen evaluation data. A local-model run on 21 fixed synthetic queries recorded 20/21 Recall@1 and MRR@1 of 0.9524, with one payment-versus-authentication miss; see [PHASE3_REVIEW.md](../python/evaluation/PHASE3_REVIEW.md).
 - **Learn:** embeddings, similarity ranking, and provenance. [Sentence Transformers semantic search](https://sbert.net/examples/sentence_transformer/applications/semantic-search/README.html).
 - **Tasks:** add a small synthetic history with descriptions, symptoms, confirmed causes, resolutions, and impact. Embed history and incoming descriptions with a local sentence-transformer model. Retrieve top-k matches with scores using an in-memory index; add FAISS only if justified. Pass relevant history to the LLM classifier or investigation planner, labeled as historical context rather than current evidence.
 - **Tests / done:** fixed queries have expected relevant IDs; report Recall@k and ranking quality. Similarity never directly sets severity or proves a cause.
