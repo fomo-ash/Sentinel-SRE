@@ -5,11 +5,17 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/sentinel-sre/mock-service/internal/incidents"
 )
 
 func TestHealth(t *testing.T) {
+	store, err := incidents.DefaultStore()
+	if err != nil {
+		t.Fatal(err)
+	}
 	recorder := httptest.NewRecorder()
-	NewHandler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
+	NewHandler(store).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -17,4 +23,3 @@ func TestHealth(t *testing.T) {
 		t.Fatalf("body = %s", recorder.Body.String())
 	}
 }
-

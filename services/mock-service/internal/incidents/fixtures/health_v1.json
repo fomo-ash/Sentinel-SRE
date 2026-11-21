@@ -1,0 +1,30 @@
+[
+  {
+    "incident_id": "diag-healthy",
+    "service": "api",
+    "observed_at": "2026-01-01T00:00:00Z",
+    "status": "healthy",
+    "checks": [{"id": "readiness", "status": "healthy", "detail": "The simulated API readiness probe passed."}]
+  },
+  {
+    "incident_id": "diag-degraded",
+    "service": "api",
+    "observed_at": "2026-01-01T00:05:00Z",
+    "status": "degraded",
+    "checks": [{"id": "readiness", "status": "degraded", "detail": "The simulated API readiness probe was slow."}]
+  },
+  {
+    "incident_id": "diag-missing",
+    "service": "worker",
+    "observed_at": "2026-01-01T00:10:00Z",
+    "status": "unknown",
+    "checks": []
+  },
+  {
+    "incident_id": "diag-unhealthy",
+    "service": "worker",
+    "observed_at": "2026-01-01T00:15:00Z",
+    "status": "unhealthy",
+    "checks": [{"id": "readiness", "status": "unhealthy", "detail": "The simulated worker readiness probe failed."}]
+  }
+]
