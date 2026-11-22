@@ -1,0 +1,36 @@
+[
+  {
+    "incident_id": "diag-healthy",
+    "service": "api",
+    "observed_at": "2026-01-01T00:00:00Z",
+    "entries": [
+      {"id": "api-readiness-passed", "timestamp": "2025-12-31T23:59:45Z", "component": "api", "level": "info", "message": "Readiness check completed successfully."},
+      {"id": "api-requests-served", "timestamp": "2025-12-31T23:59:55Z", "component": "api", "level": "info", "message": "Requests completed within the expected latency range."}
+    ]
+  },
+  {
+    "incident_id": "diag-degraded",
+    "service": "api",
+    "observed_at": "2026-01-01T00:05:00Z",
+    "entries": [
+      {"id": "api-readiness-slow", "timestamp": "2026-01-01T00:04:35Z", "component": "api", "level": "warn", "message": "Readiness check completed more slowly than expected."},
+      {"id": "api-request-timeout", "timestamp": "2026-01-01T00:04:43Z", "component": "api", "level": "error", "message": "A request exceeded the simulated response deadline."},
+      {"id": "api-error-response", "timestamp": "2026-01-01T00:04:52Z", "component": "api", "level": "error", "message": "A request returned an HTTP 5xx response."}
+    ]
+  },
+  {
+    "incident_id": "diag-missing",
+    "service": "worker",
+    "observed_at": "2026-01-01T00:10:00Z",
+    "entries": []
+  },
+  {
+    "incident_id": "diag-unhealthy",
+    "service": "worker",
+    "observed_at": "2026-01-01T00:15:00Z",
+    "entries": [
+      {"id": "worker-readiness-failed", "timestamp": "2026-01-01T00:14:41Z", "component": "worker", "level": "error", "message": "The simulated worker readiness check failed."},
+      {"id": "worker-queue-growing", "timestamp": "2026-01-01T00:14:54Z", "component": "worker", "level": "warn", "message": "The observed work queue depth increased during the fixture window."}
+    ]
+  }
+]

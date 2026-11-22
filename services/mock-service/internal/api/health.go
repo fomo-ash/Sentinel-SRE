@@ -17,5 +17,6 @@ func NewHandler(store *incidents.Store) http.Handler {
 	})
 	mux.Handle("GET /incidents/{id}/health", incidentHealthHandler(store))
 	mux.Handle("GET /incidents/{id}/metrics", incidentMetricsHandler(store))
+	mux.Handle("GET /incidents/{id}/logs", incidentLogsHandler(store))
 	return mux
 }

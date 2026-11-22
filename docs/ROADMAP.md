@@ -1,6 +1,6 @@
 # Sentinel implementation roadmap
 
-Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases 2 and 3 are evaluated on small synthetic sets, and their model and retrieval routes remain opt-in. Later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current checklist, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2](../python/evaluation/PHASE2_REVIEW.md) and [Phase 3](../python/evaluation/PHASE3_REVIEW.md) reviews for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
+Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases 2 and 3 are evaluated on small synthetic sets, and their model and retrieval routes remain opt-in. Later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current checklist, [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) for detailed Phase 4–5 file work and acceptance gates, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2](../python/evaluation/PHASE2_REVIEW.md) and [Phase 3](../python/evaluation/PHASE3_REVIEW.md) reviews for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
 
 ## Phase 0 — Foundation (complete)
 
@@ -40,7 +40,8 @@ Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases
 
 ## Phase 4 — Planning and diagnostic loop
 
-- **Go reads implemented:** the loopback service validates matching synthetic health and metrics fixtures and exposes read-only `GET /incidents/{id}/health` and `GET /incidents/{id}/metrics`, with fixed JSON errors and Go contract tests. Logs, the Python diagnostic client, and the bounded graph loop remain pending.
+- **Go reads implemented:** the loopback service validates matching synthetic health, metrics, and log fixtures and exposes read-only `GET /incidents/{id}/health`, `/metrics`, and `/logs`, with fixed JSON errors and Go contract tests. The Python diagnostic client and bounded graph loop remain pending.
+- **Detailed implementation plan:** [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) defines the local Go contracts, Python files, graph loop, budgets, failure rules, and verification gate.
 - **Learn:** conditional edges, bounded cycles, tool isolation, retries, and failure routes. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** plan diagnostic reads, query simulated logs/metrics/health via fake clients first, evaluate evidence, and route to another round or diagnosis. Set a maximum round count and tool-call budget.
 - **Tests / done:** test both routes, exhausted budget, missing data, tool timeout, and retry limit. Record calls, latency, and failures.
@@ -48,6 +49,7 @@ Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases
 
 ## Phase 5 — Diagnosis and evaluation
 
+- **Detailed implementation plan:** [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) defines the diagnosis contract, grounded citation rules, three-arm comparison, datasets, and verification gate.
 - **Learn:** evidence-grounded conclusions and comparative evaluation. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** produce diagnosis with current-incident evidence references and unresolved questions. Extend the existing fixed synthetic evaluation set with separate held-out cases. Compare deterministic baseline, LLM without retrieval, and LLM with retrieval separately.
 - **Tests / done:** measure severity accuracy, symptom precision/recall, Retrieval Recall@k and ranking quality, diagnosis usefulness from retrieved history, structured-output validity, tool-call counts, latency, and failure rates. Document datasets, labels, and results; claim no improvement without measurements.

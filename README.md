@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, and a local Go service with synthetic incident health and metrics reads. The Python investigation loop and remediation are planned work; the current code is not production ready.
+Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, and a local Go service with synthetic incident health, metrics, and logs reads. The Python investigation loop and remediation are planned work; the current code is not production ready.
 
 ## Prerequisites
 

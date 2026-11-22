@@ -40,6 +40,7 @@ type HealthSnapshot struct {
 type Store struct {
 	health  map[string]HealthSnapshot
 	metrics map[string]MetricsSnapshot
+	logs    map[string]LogSnapshot
 }
 
 // ValidID restricts lookups to synthetic incident IDs, never file paths or URLs.
@@ -127,9 +128,33 @@ func loadStore(healthData, metricsData []byte) (*Store, error) {
 	return store, nil
 }
 
+// loadStoreWithLogs requires all three fixture sets to describe the same
+// incident, service, and observation time.
+func loadStoreWithLogs(healthData, metricsData, logsData []byte) (*Store, error) {
+	store, err := loadStore(healthData, metricsData)
+	if err != nil {
+		return nil, err
+	}
+	logs, err := loadLogs(logsData)
+	if err != nil {
+		return nil, err
+	}
+	if len(logs) != len(store.health) {
+		return nil, errors.New("health and log fixtures have different incident IDs")
+	}
+	for id, snapshot := range store.health {
+		logSnapshot, ok := logs[id]
+		if !ok || logSnapshot.Service != snapshot.Service || logSnapshot.ObservedAt != snapshot.ObservedAt {
+			return nil, fmt.Errorf("log fixture does not match health incident %q", id)
+		}
+	}
+	store.logs = logs
+	return store, nil
+}
+
 // DefaultStore loads the embedded diagnostic snapshots at server startup.
 func DefaultStore() (*Store, error) {
-	return loadStore(defaultFixtures, defaultMetricFixtures)
+	return loadStoreWithLogs(defaultFixtures, defaultMetricFixtures, defaultLogFixtures)
 }
 
 // Health returns a copy of a snapshot and its checks so callers cannot mutate
