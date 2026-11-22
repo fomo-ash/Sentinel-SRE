@@ -168,7 +168,7 @@ If historical IDs are present, they appear only in `historical_context_ids`. A s
 
 | File | Edit or add | Expected responsibility |
 | --- | --- | --- |
-| `python/src/sentinel/schemas.py` | Edit | Add separate diagnosis output contract, typed state result, source/failure enums, and evidence-reference validation helpers. Replace the unused string diagnosis placeholder. |
+| `python/src/sentinel/schemas.py` | Implemented for Phase 5 contract | Separate diagnosis output contract, typed state result, source/failure enums, and current-evidence reference validation. Cause inference remains in the planned diagnosis node. |
 | `python/src/sentinel/nodes/diagnose.py` | Add | Deterministic baseline, injected model protocol, grounded prompt construction, schema validation, citation checking, bounded repair/retry, and inconclusive fallback. |
 | `python/src/sentinel/openai_diagnoser.py` | Add if live provider comparison is run | Optional LangChain/OpenAI adapter using existing environment conventions; no provider initialization on the default route. |
 | `python/src/sentinel/graph.py` | Edit | Route Phase 4's `finish_investigation` handoff to `diagnose`; leave the classification-only default unchanged. |

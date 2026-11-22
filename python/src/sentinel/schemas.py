@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal, NotRequired
 
-from pydantic import Field
+from pydantic import ConfigDict, Field, TypeAdapter, with_config
 from typing_extensions import TypedDict
 
 Severity = Literal["unknown", "sev1", "sev2", "sev3"]
@@ -25,6 +25,15 @@ RetrievalFailure = Literal["retriever_error"]
 DiagnosticKind = Literal["health", "metrics", "logs"]
 DiagnosticFailureCategory = Literal[
     "timeout", "unavailable", "not_found", "invalid_response"
+]
+DiagnosisStatus = Literal["supported", "inconclusive"]
+DiagnosisSource = Literal["deterministic", "llm", "fallback"]
+DiagnosisFailure = Literal[
+    "invalid_output",
+    "timeout",
+    "provider_unavailable",
+    "rate_limited",
+    "provider_error",
 ]
 InvestigationStopReason = Literal[
     "checks_complete",
@@ -51,6 +60,13 @@ class Evidence(TypedDict):
     observation: str
 
 
+@with_config(ConfigDict(extra="forbid"))
+class DiagnosisHypothesis(TypedDict):
+    cause: str
+    supporting_evidence_ids: list[str]
+    contradicting_evidence_ids: NotRequired[list[str]]
+
+
 class DiagnosticCheck(TypedDict):
     kind: DiagnosticKind
     reason: str
@@ -66,6 +82,16 @@ class DiagnosticFailure(TypedDict):
 class Hypothesis(TypedDict):
     cause: str
     rationale: str
+
+
+@with_config(ConfigDict(extra="forbid"))
+class Diagnosis(TypedDict):
+    status: DiagnosisStatus
+    summary: str
+    hypotheses: list[DiagnosisHypothesis]
+    unresolved_questions: list[str]
+    historical_context_ids: list[str]
+    source: DiagnosisSource
 
 
 class classifySchema(TypedDict):
@@ -105,7 +131,9 @@ class InvestigationState(TypedDict):
     last_attempts: NotRequired[int]
     last_latency_ms: NotRequired[float]
     investigation_stop_reason: NotRequired[InvestigationStopReason | None]
-    diagnosis: NotRequired[str]
+    diagnosis: NotRequired[Diagnosis | None]
+    diagnosis_source: NotRequired[DiagnosisSource]
+    diagnosis_failure_reason: NotRequired[DiagnosisFailure | None]
     historical_matches: NotRequired[list[dict]]
     retrieval_failure_reason: NotRequired[RetrievalFailure | None]
 
@@ -116,3 +144,46 @@ def validate_incident(incident: IncidentReport) -> None:
         value = incident.get(field)
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"incident.{field} must be a non-empty string")
+
+
+_diagnosis_adapter = TypeAdapter(Diagnosis)
+
+
+def validate_diagnosis(value: object, state: InvestigationState) -> Diagnosis:
+    """Accept only well-shaped diagnoses citing current-incident evidence."""
+    diagnosis = _diagnosis_adapter.validate_python(value, strict=True)
+    incident = state["incident"]
+    evidence = state.get("evidence", [])
+    all_evidence_ids = [item["id"] for item in evidence]
+    if len(all_evidence_ids) != len(set(all_evidence_ids)):
+        raise ValueError("Current evidence IDs must be unique")
+    current_ids = {
+        item["id"]
+        for item in evidence
+        if item["incident_id"] == incident["id"]
+        and item["service"] == incident["service"]
+    }
+    history_ids = {
+        item["id"]
+        for item in state.get("historical_matches", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+
+    if not diagnosis["summary"].strip():
+        raise ValueError("Diagnosis summary must be nonempty")
+    if not set(diagnosis["historical_context_ids"]) <= history_ids:
+        raise ValueError("Unknown historical context ID")
+    if diagnosis["status"] == "supported" and not diagnosis["hypotheses"]:
+        raise ValueError("Supported diagnosis needs a hypothesis")
+
+    for hypothesis in diagnosis["hypotheses"]:
+        if not hypothesis["cause"].strip():
+            raise ValueError("Hypothesis cause must be nonempty")
+        supporting = hypothesis["supporting_evidence_ids"]
+        if diagnosis["status"] == "supported" and not supporting:
+            raise ValueError("Supported hypothesis needs current evidence")
+        for field in ("supporting_evidence_ids", "contradicting_evidence_ids"):
+            references = set(hypothesis.get(field, []))
+            if references & history_ids or not references <= current_ids:
+                raise ValueError(f"{field} contains non-current evidence")
+    return diagnosis

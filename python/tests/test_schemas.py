@@ -1,7 +1,14 @@
+from copy import deepcopy
+
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from sentinel.schemas import InvestigationState, classifySchema, validate_incident
+from sentinel.schemas import (
+    InvestigationState,
+    classifySchema,
+    validate_diagnosis,
+    validate_incident,
+)
 
 
 def test_incident_requires_nonempty_fields():
@@ -98,3 +105,138 @@ def test_graph_state_rejects_unrecognized_failure_source_and_provider_object():
         TypeAdapter(InvestigationState).validate_python(state)
     for field in ("classification_source", "failure_reason", "model_interpretation"):
         assert field in str(error.value)
+
+
+def _diagnosis_state():
+    return {
+        "incident": {"id": "diag-one", "service": "api", "summary": "API errors"},
+        "evidence": [
+            {
+                "id": "diag-one:health:ready",
+                "incident_id": "diag-one",
+                "service": "api",
+                "kind": "health",
+                "source_ref": "GET /incidents/diag-one/health#checks/ready",
+                "observed_at": "2026-01-01T00:00:00Z",
+                "observation": "unhealthy: readiness failed",
+            },
+            {
+                "id": "diag-one:metric:errors",
+                "incident_id": "diag-one",
+                "service": "api",
+                "kind": "metric",
+                "source_ref": "GET /incidents/diag-one/metrics#metrics/errors",
+                "observed_at": "2026-01-01T00:00:00Z",
+                "observation": "errors=0.12 ratio over 5m",
+            },
+            {
+                "id": "diag-other:log:failure",
+                "incident_id": "diag-other",
+                "service": "api",
+                "kind": "log",
+                "source_ref": "GET /incidents/diag-other/logs#entries/failure",
+                "observed_at": "2026-01-01T00:00:00Z",
+                "observation": "A different incident failed",
+            },
+        ],
+        "historical_matches": [{"id": "hist-one"}],
+        "diagnostic_failures": [
+            {"kind": "logs", "category": "timeout", "attempts": 1, "latency_ms": 2.0}
+        ],
+    }
+
+
+def _supported_diagnosis():
+    return {
+        "status": "supported",
+        "summary": "Current API observations support a failure hypothesis.",
+        "hypotheses": [
+            {
+                "cause": "The API readiness check failed.",
+                "supporting_evidence_ids": [
+                    "diag-one:health:ready",
+                    "diag-one:metric:errors",
+                ],
+                "contradicting_evidence_ids": [],
+            }
+        ],
+        "unresolved_questions": ["Why did the readiness check fail?"],
+        "historical_context_ids": ["hist-one"],
+        "source": "deterministic",
+    }
+
+
+def test_diagnosis_accepts_current_evidence_and_separate_history_context():
+    value = _supported_diagnosis()
+    assert validate_diagnosis(value, _diagnosis_state()) == value
+
+
+def test_inconclusive_diagnosis_can_abstain_without_evidence():
+    value = {
+        "status": "inconclusive",
+        "summary": "Current observations do not establish a cause.",
+        "hypotheses": [],
+        "unresolved_questions": ["What failed?"],
+        "historical_context_ids": [],
+        "source": "deterministic",
+    }
+    state = _diagnosis_state()
+    state["evidence"] = []
+    assert validate_diagnosis(value, state) == value
+
+
+@pytest.mark.parametrize(
+    "citation",
+    [
+        "unknown-id",
+        "hist-one",
+        "diag-other:log:failure",
+        "timeout",
+    ],
+)
+def test_diagnosis_rejects_non_current_supporting_citation(citation):
+    value = _supported_diagnosis()
+    value["hypotheses"][0]["supporting_evidence_ids"] = [citation]
+    with pytest.raises(ValueError, match="non-current evidence"):
+        validate_diagnosis(value, _diagnosis_state())
+
+
+def test_diagnosis_rejects_cross_service_and_contradicting_citations():
+    state = _diagnosis_state()
+    state["evidence"][1]["service"] = "worker"
+    value = _supported_diagnosis()
+    with pytest.raises(ValueError, match="non-current evidence"):
+        validate_diagnosis(value, state)
+    value = _supported_diagnosis()
+    value["hypotheses"][0]["contradicting_evidence_ids"] = ["hist-one"]
+    with pytest.raises(ValueError, match="non-current evidence"):
+        validate_diagnosis(value, _diagnosis_state())
+
+
+def test_diagnosis_rejects_unknown_history_and_unsupported_cause():
+    value = _supported_diagnosis()
+    value["historical_context_ids"] = ["hist-unknown"]
+    with pytest.raises(ValueError, match="Unknown historical"):
+        validate_diagnosis(value, _diagnosis_state())
+    value = _supported_diagnosis()
+    value["hypotheses"][0]["supporting_evidence_ids"] = []
+    with pytest.raises(ValueError, match="needs current evidence"):
+        validate_diagnosis(value, _diagnosis_state())
+    value["hypotheses"] = []
+    with pytest.raises(ValueError, match="needs a hypothesis"):
+        validate_diagnosis(value, _diagnosis_state())
+
+
+def test_diagnosis_rejects_bad_shape_and_duplicate_current_evidence_ids():
+    value = _supported_diagnosis()
+    value["status"] = "certain"
+    with pytest.raises(ValidationError, match="status"):
+        validate_diagnosis(value, _diagnosis_state())
+    value = _supported_diagnosis()
+    value["invented_metric"] = 42
+    with pytest.raises(ValidationError, match="invented_metric"):
+        validate_diagnosis(value, _diagnosis_state())
+    state = _diagnosis_state()
+    state["evidence"].append(deepcopy(state["evidence"][0]))
+    with pytest.raises(ValueError, match="must be unique"):
+        validate_diagnosis(_supported_diagnosis(), state)
