@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from sentinel.nodes.classify import classify
+from sentinel.nodes.diagnose import diagnose_baseline
 from sentinel.nodes.evaluate import evaluate_evidence
 from sentinel.nodes.investigate import DIAGNOSTIC_PLAN, plan_diagnostics, run_diagnostic
 from sentinel.nodes.llm_classify import ClassificationModel, build_llm_classify_node
@@ -42,6 +43,9 @@ def receive_incident(state: InvestigationState) -> dict:
         "last_attempts": 0,
         "last_latency_ms": 0.0,
         "investigation_stop_reason": None,
+        "diagnosis": None,
+        "diagnosis_source": None,
+        "diagnosis_failure_reason": None,
         "historical_matches": [],
         "retrieval_failure_reason": None,
     }
@@ -235,6 +239,7 @@ def build_graph(
     workflow.add_node("run_diagnostic", run_node)
     workflow.add_node("evaluate_evidence", evaluate_evidence)
     workflow.add_node("finish_investigation", finish_investigation)
+    workflow.add_node("diagnose_baseline", diagnose_baseline)
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -267,5 +272,6 @@ def build_graph(
         route_evaluation,
         {"continue": "plan_diagnostics", "stop": "finish_investigation"},
     )
-    workflow.add_edge("finish_investigation", END)
+    workflow.add_edge("finish_investigation", "diagnose_baseline")
+    workflow.add_edge("diagnose_baseline", END)
     return workflow.compile(checkpointer=InMemorySaver())

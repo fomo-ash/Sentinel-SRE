@@ -132,7 +132,7 @@ class InvestigationState(TypedDict):
     last_latency_ms: NotRequired[float]
     investigation_stop_reason: NotRequired[InvestigationStopReason | None]
     diagnosis: NotRequired[Diagnosis | None]
-    diagnosis_source: NotRequired[DiagnosisSource]
+    diagnosis_source: NotRequired[DiagnosisSource | None]
     diagnosis_failure_reason: NotRequired[DiagnosisFailure | None]
     historical_matches: NotRequired[list[dict]]
     retrieval_failure_reason: NotRequired[RetrievalFailure | None]

@@ -30,5 +30,13 @@
     "metrics": [
       {"id": "worker_queue_depth", "name": "worker_queue_depth", "value": 230, "unit": "items", "window": "5m"}
     ]
+  },
+  {
+    "incident_id": "diag-db-auth",
+    "service": "api",
+    "observed_at": "2026-01-01T00:20:00Z",
+    "metrics": [
+      {"id": "db_connection_failures", "name": "db_connection_failures", "value": 8, "unit": "count", "window": "5m"}
+    ]
   }
 ]

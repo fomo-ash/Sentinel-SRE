@@ -1,6 +1,8 @@
 """Bounded graph transitions for opt-in simulated investigation."""
 
+import json
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -102,8 +104,82 @@ def test_opt_in_reads_three_routes_and_checkpoints_current_evidence():
     )
     baseline, _ = _invoke(build_graph(), mode="off", thread_id="baseline")
     assert result["final_severity"] == baseline["final_severity"]
-    assert "diagnosis" not in result
+    assert result["diagnosis"]["status"] == "inconclusive"
+    assert result["diagnosis"]["hypotheses"] == []
+    assert result["diagnosis_source"] == "deterministic"
+    assert result["diagnosis_failure_reason"] is None
     assert checkpoint == result
+
+
+def test_supported_cause_fixture_flows_through_graph_and_checkpoint():
+    fixture_dir = (
+        Path(__file__).resolve().parents[2]
+        / "services/mock-service/internal/incidents/fixtures"
+    )
+
+    class FixtureClient:
+        def __init__(self):
+            self.calls = []
+
+        def read(self, kind, incident_id, service, *, limit=None):
+            self.calls.append(kind)
+            snapshots = json.loads((fixture_dir / f"{kind}_v1.json").read_text())
+            snapshot = next(
+                item for item in snapshots if item["incident_id"] == incident_id
+            )
+            assert snapshot["service"] == service
+            return snapshot
+
+    client = FixtureClient()
+    graph = build_graph(diagnostic_client=client)
+    config = {
+        "configurable": {
+            "thread_id": "supported-db-auth",
+            "investigation_mode": "simulated",
+        }
+    }
+    result = graph.invoke(
+        {
+            "incident": {
+                "id": "diag-db-auth",
+                "service": "api",
+                "summary": "API requests fail when opening database connections.",
+            }
+        },
+        config,
+    )
+    assert client.calls == ["health", "metrics", "logs"]
+    assert result["investigation_stop_reason"] == "checks_complete"
+    assert result["diagnosis"]["status"] == "supported"
+    assert result["diagnosis"]["hypotheses"][0]["supporting_evidence_ids"] == [
+        "diag-db-auth:health:database_auth",
+        "diag-db-auth:log:db-auth-rejected",
+    ]
+    assert result["diagnosis_source"] == "deterministic"
+    assert result["final_severity"] == "unknown"
+    assert graph.get_state(config).values == result
+
+    limited_client = FixtureClient()
+    limited = build_graph(
+        diagnostic_client=limited_client, max_investigation_rounds=2
+    ).invoke(
+        {
+            "incident": {
+                "id": "diag-db-auth",
+                "service": "api",
+                "summary": "API requests fail when opening database connections.",
+            }
+        },
+        {
+            "configurable": {
+                "thread_id": "db-auth-without-log",
+                "investigation_mode": "simulated",
+            }
+        },
+    )
+    assert limited_client.calls == ["health", "metrics"]
+    assert limited["investigation_stop_reason"] == "max_rounds"
+    assert limited["diagnosis"]["status"] == "inconclusive"
 
 
 def test_default_route_never_calls_diagnostic_client():
@@ -113,6 +189,8 @@ def test_default_route_never_calls_diagnostic_client():
     assert result["tool_call_count"] == 0
     assert result["evidence"] == []
     assert result["investigation_stop_reason"] is None
+    assert result["diagnosis"] is None
+    assert result["diagnosis_source"] is None
 
 
 def test_not_found_stops_after_one_attempt_without_evidence():
@@ -124,6 +202,8 @@ def test_not_found_stops_after_one_attempt_without_evidence():
     assert result["investigation_stop_reason"] == "incident_not_found"
     assert result["evidence"] == []
     assert result["diagnostic_failures"][0]["category"] == "not_found"
+    assert result["diagnosis"]["status"] == "inconclusive"
+    assert result["diagnosis"]["hypotheses"] == []
 
 
 def test_transient_failure_retries_once_and_counts_failed_attempt():
@@ -135,6 +215,7 @@ def test_transient_failure_retries_once_and_counts_failed_attempt():
     assert result["diagnostic_failures"][0]["category"] == "timeout"
     assert result["diagnostic_failures"][0]["attempts"] == 1
     assert len(result["evidence"]) == 3
+    assert result["diagnosis"]["status"] == "inconclusive"
 
 
 def test_call_budget_blocks_next_read_after_exhausted_retries():
@@ -148,6 +229,7 @@ def test_call_budget_blocks_next_read_after_exhausted_retries():
     assert result["investigation_stop_reason"] == "max_tool_calls"
     assert result["evidence"] == []
     assert [item["attempts"] for item in result["diagnostic_failures"]] == [1, 2]
+    assert result["diagnosis"]["status"] == "inconclusive"
 
 
 def test_round_budget_stops_before_second_read():
@@ -158,6 +240,7 @@ def test_round_budget_stops_before_second_read():
     assert [call[0] for call in client.calls] == ["health"]
     assert result["tool_call_count"] == 1
     assert result["investigation_stop_reason"] == "max_rounds"
+    assert result["diagnosis"]["status"] == "inconclusive"
 
 
 def test_empty_observations_stop_without_fabricated_evidence():
@@ -172,6 +255,7 @@ def test_empty_observations_stop_without_fabricated_evidence():
     assert result["tool_call_count"] == 3
     assert result["investigation_stop_reason"] == "no_usable_data"
     assert result["evidence"] == []
+    assert result["diagnosis"]["status"] == "inconclusive"
 
 
 def test_invalid_response_is_not_retried_or_recorded_as_evidence():
@@ -181,6 +265,7 @@ def test_invalid_response_is_not_retried_or_recorded_as_evidence():
     assert result["diagnostic_failures"][0]["category"] == "invalid_response"
     assert len(result["evidence"]) == 2
     assert all(item["kind"] != "health" for item in result["evidence"])
+    assert result["diagnosis"]["status"] == "inconclusive"
 
 
 def test_historical_match_never_becomes_current_evidence():
@@ -226,6 +311,21 @@ def test_historical_match_never_becomes_current_evidence():
     assert result["historical_matches"][0]["id"] == "hist-one"
     assert result["evidence"] == []
     assert result["investigation_stop_reason"] == "no_usable_data"
+    assert result["diagnosis"]["historical_context_ids"] == ["hist-one"]
+    assert result["diagnosis"]["hypotheses"] == []
+
+
+def test_new_classification_on_same_thread_clears_prior_diagnosis():
+    client = FakeClient()
+    graph = build_graph(diagnostic_client=client)
+    first, _ = _invoke(graph, thread_id="reuse")
+    assert first["diagnosis"]["status"] == "inconclusive"
+    second, checkpoint = _invoke(graph, mode="off", thread_id="reuse")
+    assert second["diagnosis"] is None
+    assert second["diagnosis_source"] is None
+    assert second["diagnosis_failure_reason"] is None
+    assert len(client.calls) == 3
+    assert checkpoint == second
 
 
 def test_bad_mode_client_or_id_fails_before_diagnostic_call():

@@ -24,6 +24,18 @@ func TestDefaultStoreAndDefensiveCopy(t *testing.T) {
 	if !ok || missing.Status != "unknown" || missing.Checks == nil || len(missing.Checks) != 0 {
 		t.Fatalf("missing-data fixture was not preserved: %#v", missing)
 	}
+	dbAuth, ok := store.Health("diag-db-auth")
+	if !ok || dbAuth.Service != "api" || len(dbAuth.Checks) != 1 || dbAuth.Checks[0].ID != "database_auth" {
+		t.Fatalf("database auth fixture was not loaded: %#v", dbAuth)
+	}
+	dbMetrics, ok := store.Metrics("diag-db-auth")
+	if !ok || dbMetrics.ObservedAt != dbAuth.ObservedAt || len(dbMetrics.Metrics) != 1 {
+		t.Fatalf("database auth metrics do not match health: %#v", dbMetrics)
+	}
+	dbLogs, ok := store.Logs("diag-db-auth")
+	if !ok || dbLogs.ObservedAt != dbAuth.ObservedAt || len(dbLogs.Entries) != 1 {
+		t.Fatalf("database auth logs do not match health: %#v", dbLogs)
+	}
 }
 
 // TestLoadHealthRejectsInvalidFixtures covers whole-file and record failures.

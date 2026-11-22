@@ -47,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
         "diagnostic_latency_ms": result["diagnostic_latency_ms"],
         "evidence": result["evidence"],
         "diagnostic_failures": result["diagnostic_failures"],
+        "diagnosis": result["diagnosis"],
     }
     print(json.dumps(report, indent=2))
     return 0

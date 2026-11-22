@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, a local Go service with synthetic incident health, metrics, and logs reads, and an opt-in bounded Python investigation loop. Diagnosis and remediation are planned work; the current code is not production ready.
+Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, a local Go service with synthetic incident health, metrics, and logs reads, and an opt-in bounded Python investigation loop. Investigated incidents end with a deterministic diagnosis: one fixture supports an observed database login rejection, while the others remain inconclusive. Remediation is planned work, and the current code is not production ready.
 
 ## Prerequisites
 
@@ -113,7 +113,7 @@ python -m pip install -e .
 python -m sentinel.cli --id diag-degraded --service api --summary "API requests are slow for several users"
 ```
 
-The CLI prints final policy severity, current-incident evidence with stable source references, diagnostic failures, the number of actual HTTP attempts, total diagnostic latency, and a stop reason. `unknown` severity is possible even when the diagnostics show degradation because severity policy uses the reported incident facts, not the diagnostic fixture. The available fixture IDs are `diag-healthy` and `diag-degraded` for `api`, and `diag-missing` and `diag-unhealthy` for `worker`. Each CLI run uses a fresh in-memory checkpoint thread. It does not produce a cause diagnosis or change any service state.
+The CLI prints final policy severity, current-incident evidence with stable source references, diagnostic failures, the number of actual HTTP attempts, total diagnostic latency, a stop reason, and a structured diagnosis. `diag-db-auth` for `api` demonstrates a `supported` database login rejection with health and log citations; the other fixtures remain `inconclusive`. The rule identifies the observed failure mechanism, while why the login was rejected remains unresolved. `unknown` severity is possible even when diagnostics show degradation because severity policy uses the reported incident facts, not the diagnostic fixture. The available fixture IDs are `diag-healthy`, `diag-degraded`, and `diag-db-auth` for `api`, and `diag-missing` and `diag-unhealthy` for `worker`. Each CLI run uses a fresh in-memory checkpoint thread and changes no service state.
 
 Python callers can also inject `HTTPDiagnosticClient()` into `build_graph(diagnostic_client=client)` and invoke with `{"configurable": {"thread_id": "unique-id", "investigation_mode": "simulated"}}`. Omitting `investigation_mode` keeps the classification-only route. The diagnostic client is the only network component in this route, and it accepts loopback HTTP origins only.
 

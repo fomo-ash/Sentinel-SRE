@@ -26,5 +26,12 @@
     "observed_at": "2026-01-01T00:15:00Z",
     "status": "unhealthy",
     "checks": [{"id": "readiness", "status": "unhealthy", "detail": "The simulated worker readiness probe failed."}]
+  },
+  {
+    "incident_id": "diag-db-auth",
+    "service": "api",
+    "observed_at": "2026-01-01T00:20:00Z",
+    "status": "unhealthy",
+    "checks": [{"id": "database_auth", "status": "unhealthy", "detail": "API database login failed with SQLSTATE 28P01 (invalid_password)."}]
   }
 ]

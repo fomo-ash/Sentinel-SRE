@@ -32,5 +32,13 @@
       {"id": "worker-readiness-failed", "timestamp": "2026-01-01T00:14:41Z", "component": "worker", "level": "error", "message": "The simulated worker readiness check failed."},
       {"id": "worker-queue-growing", "timestamp": "2026-01-01T00:14:54Z", "component": "worker", "level": "warn", "message": "The observed work queue depth increased during the fixture window."}
     ]
+  },
+  {
+    "incident_id": "diag-db-auth",
+    "service": "api",
+    "observed_at": "2026-01-01T00:20:00Z",
+    "entries": [
+      {"id": "db-auth-rejected", "timestamp": "2026-01-01T00:19:42Z", "component": "database", "level": "error", "message": "Database driver could not open an API connection: SQLSTATE 28P01 (invalid_password)."}
+    ]
   }
 ]

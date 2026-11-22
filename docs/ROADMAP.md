@@ -49,7 +49,7 @@ Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases
 
 ## Phase 5 — Diagnosis and evaluation
 
-- **Diagnosis contract implemented:** `schemas.py` defines a strict structured result and validates every hypothesis citation against evidence for the current incident and service. History IDs are accepted only as historical context; unknown, duplicate, cross-incident, and tool-failure references are rejected. The deterministic diagnosis baseline, graph routing, model path, and evaluation remain pending.
+- **Diagnosis contract and first supported rule implemented:** `schemas.py` validates a strict structured result and current-incident citations. Every opt-in simulated investigation ends at `nodes/diagnose.py`. The `diag-db-auth` fixture yields `supported` only when current health and log observations both identify database login rejection; the rule cites both and leaves its underlying reason unresolved. Missing, conflicting, or symptom-only evidence remains `inconclusive`. The default classification-only route leaves diagnosis empty. A model path and comparative evaluation remain pending.
 - **Detailed implementation plan:** [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) defines the diagnosis contract, grounded citation rules, three-arm comparison, datasets, and verification gate.
 - **Learn:** evidence-grounded conclusions and comparative evaluation. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** produce diagnosis with current-incident evidence references and unresolved questions. Extend the existing fixed synthetic evaluation set with separate held-out cases. Compare deterministic baseline, LLM without retrieval, and LLM with retrieval separately.
