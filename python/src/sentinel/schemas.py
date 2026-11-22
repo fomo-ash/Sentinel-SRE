@@ -22,6 +22,17 @@ ClassificationFailure = Literal[
     "provider_error",
 ]
 RetrievalFailure = Literal["retriever_error"]
+DiagnosticKind = Literal["health", "metrics", "logs"]
+DiagnosticFailureCategory = Literal[
+    "timeout", "unavailable", "not_found", "invalid_response"
+]
+InvestigationStopReason = Literal[
+    "checks_complete",
+    "incident_not_found",
+    "max_rounds",
+    "max_tool_calls",
+    "no_usable_data",
+]
 
 
 class IncidentReport(TypedDict):
@@ -31,8 +42,25 @@ class IncidentReport(TypedDict):
 
 
 class Evidence(TypedDict):
-    source: str
+    id: str
+    incident_id: str
+    service: str
+    kind: Literal["health", "metric", "log"]
+    source_ref: str
+    observed_at: str
     observation: str
+
+
+class DiagnosticCheck(TypedDict):
+    kind: DiagnosticKind
+    reason: str
+
+
+class DiagnosticFailure(TypedDict):
+    kind: DiagnosticKind
+    category: DiagnosticFailureCategory
+    attempts: int
+    latency_ms: float
 
 
 class Hypothesis(TypedDict):
@@ -65,6 +93,18 @@ class InvestigationState(TypedDict):
     failure_reason: NotRequired[ClassificationFailure | None]
     hypotheses: NotRequired[list[Hypothesis]]
     evidence: NotRequired[list[Evidence]]
+    diagnostic_plan: NotRequired[list[DiagnosticCheck]]
+    completed_checks: NotRequired[list[DiagnosticKind]]
+    pending_check: NotRequired[DiagnosticCheck | None]
+    diagnostic_result: NotRequired[dict | None]
+    diagnostic_error: NotRequired[DiagnosticFailureCategory | None]
+    diagnostic_failures: NotRequired[list[DiagnosticFailure]]
+    investigation_round: NotRequired[int]
+    tool_call_count: NotRequired[int]
+    diagnostic_latency_ms: NotRequired[float]
+    last_attempts: NotRequired[int]
+    last_latency_ms: NotRequired[float]
+    investigation_stop_reason: NotRequired[InvestigationStopReason | None]
     diagnosis: NotRequired[str]
     historical_matches: NotRequired[list[dict]]
     retrieval_failure_reason: NotRequired[RetrievalFailure | None]

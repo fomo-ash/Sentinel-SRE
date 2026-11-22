@@ -1,1 +1,1 @@
-"""Diagnostic tool clients will be introduced in later milestones."""
+"""Read-only clients for local simulated diagnostics."""

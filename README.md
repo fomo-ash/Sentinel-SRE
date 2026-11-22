@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, and a local Go service with synthetic incident health, metrics, and logs reads. The Python investigation loop and remediation are planned work; the current code is not production ready.
+Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, a local Go service with synthetic incident health, metrics, and logs reads, and an opt-in bounded Python investigation loop. Diagnosis and remediation are planned work; the current code is not production ready.
 
 ## Prerequisites
 
@@ -82,6 +82,40 @@ An in-memory checkpoint lasts only while the graph process lives. Use a distinct
 ## Go service
 
 From `services/mock-service/`, run `make run` then `curl http://127.0.0.1:8080/health` for process health or `curl http://127.0.0.1:8080/incidents/diag-degraded/metrics` for a fixed synthetic incident snapshot. Run `make test` for Go contract tests. The service binds to loopback by default.
+
+With the Go service running, the standalone Python client can read one fixed diagnostic route at a time:
+
+```python
+from sentinel.tools.diagnostics import HTTPDiagnosticClient
+
+with HTTPDiagnosticClient() as client:
+    health = client.read("health", "diag-degraded", "api")
+    metrics = client.read("metrics", "diag-degraded", "api")
+    logs = client.read("logs", "diag-degraded", "api", limit=20)
+```
+
+The client uses the local `SENTINEL_MOCK_SERVICE_URL` setting, rejects non-loopback origins, and validates each response. It reports fixed failure categories through `DiagnosticReadError.category`. The graph retries only timeouts and temporary unavailability, at most twice per read, within a three-round and six-call budget.
+
+### Run a simulated investigation
+
+In one terminal, start the local Go fixture service:
+
+```powershell
+cd services/mock-service
+go run ./cmd/server
+```
+
+In a second terminal, install the Python package and run the read-only CLI:
+
+```powershell
+cd python
+python -m pip install -e .
+python -m sentinel.cli --id diag-degraded --service api --summary "API requests are slow for several users"
+```
+
+The CLI prints final policy severity, current-incident evidence with stable source references, diagnostic failures, the number of actual HTTP attempts, total diagnostic latency, and a stop reason. `unknown` severity is possible even when the diagnostics show degradation because severity policy uses the reported incident facts, not the diagnostic fixture. The available fixture IDs are `diag-healthy` and `diag-degraded` for `api`, and `diag-missing` and `diag-unhealthy` for `worker`. Each CLI run uses a fresh in-memory checkpoint thread. It does not produce a cause diagnosis or change any service state.
+
+Python callers can also inject `HTTPDiagnosticClient()` into `build_graph(diagnostic_client=client)` and invoke with `{"configurable": {"thread_id": "unique-id", "investigation_mode": "simulated"}}`. Omitting `investigation_mode` keeps the classification-only route. The diagnostic client is the only network component in this route, and it accepts loopback HTTP origins only.
 
 Copy `.env.example` to `.env` only when you need local overrides. Python reads `SENTINEL_MOCK_SERVICE_URL` from the process environment; this foundation does not load `.env` automatically.
 

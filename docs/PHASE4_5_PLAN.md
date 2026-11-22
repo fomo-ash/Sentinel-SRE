@@ -1,11 +1,11 @@
 # Phase 4 and Phase 5 implementation plan
 
-Status: **partially implemented**, written 2026-11-02 and updated 2026-11-22. Phases 0–3 are implemented. The Phase 4 loopback incident health, metrics, and logs endpoints now exist; the Python diagnostic loop, Phase 5 diagnosis, and investigation evaluation remain planned. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
+Status: **partially implemented**, written 2026-11-02 and updated 2026-11-22. Phases 0–3 are implemented. The Phase 4 loopback reads, Python diagnostic client, and opt-in bounded graph loop now exist. Phase 4 measurement and review, Phase 5 diagnosis, and investigation evaluation remain planned. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
 
 ## Existing boundary to preserve
 
-- `python/src/sentinel/graph.py` currently validates an `IncidentReport`, optionally retrieves synthetic history, classifies by deterministic rules or an injected LLM, and applies deterministic severity policy. The default path needs no network, embedding model, or API key.
-- `python/src/sentinel/schemas.py` has only a small `Evidence` shape (`source`, `observation`) and a string `diagnosis` placeholder. Both need explicit contracts before diagnostics or diagnosis are stored in checkpoints.
+- `python/src/sentinel/graph.py` validates an `IncidentReport`, optionally retrieves synthetic history, classifies by deterministic rules or an injected LLM, applies deterministic severity policy, and optionally runs a bounded simulated diagnostic loop. The default path needs no network, embedding model, or API key.
+- `python/src/sentinel/schemas.py` now has structured current-incident evidence, diagnostic counters, failures, and stop reason. The unused string `diagnosis` placeholder still needs a Phase 5 contract.
 - The Go mock service exposes process `GET /health` and fixed synthetic incident health, metrics, and logs reads on `127.0.0.1:8080`. Process health is not evidence about a simulated incident.
 - `python/history/incidents_v1.jsonl` is **past synthetic context**. `python/evaluation/incidents_v1.jsonl` and `incidents_holdout_v1.jsonl` are frozen classification inputs. Keep all three separate from new current-incident diagnostic fixtures and hidden diagnosis labels.
 - The checkpoint store is process-local `InMemorySaver`. Phase 4–5 results are not restart-safe; persistent checkpoints remain Phase 7 work.
@@ -108,15 +108,15 @@ Use JSON error bodies with stable codes, validate path IDs and query values, and
 | `services/mock-service/internal/api/health_test.go` | Edit | Adapt handler construction and confirm existing `/health` behavior. |
 | `services/mock-service/cmd/server/main.go` | Edit | Load local fixture store once and inject it into the loopback handler; fail startup on invalid fixtures. |
 | `services/mock-service/README.md` | Edit | Document route examples, fixture IDs, error codes, and loopback-only behavior. |
-| `python/src/sentinel/schemas.py` | Edit | Add typed diagnostic action, evidence, failure, counters, and stop reason; validate state at boundaries. |
+| `python/src/sentinel/schemas.py` | Implemented for Phase 4 | Typed diagnostic action, evidence, failures, counters, and stop reason. |
 | `python/src/sentinel/config.py` | Edit | Keep local URL default; add positive timeout and budget settings with safe defaults. |
-| `python/src/sentinel/tools/diagnostics.py` | Add | `DiagnosticClient` protocol, fake-friendly result types, and HTTP adapter with explicit timeout, response validation, and fixed error categories. Add `httpx` as a direct dependency in `pyproject.toml` if used. |
-| `python/src/sentinel/nodes/investigate.py` | Add | Deterministically choose the next allowlisted read from the current report and completed checks; never emit a URL or action. |
-| `python/src/sentinel/nodes/evaluate.py` | Add | Convert validated tool responses to evidence, keep errors separate, and choose continue or terminal stop. |
-| `python/src/sentinel/graph.py` | Edit | Add opt-in route, diagnostic execution node, conditional loop, terminal handoff, injected client, and build-time budget validation. |
-| `python/tests/test_diagnostics.py` | Add | Fake and HTTP-mock response validation, timeout, 404, 5xx, invalid JSON, service mismatch, and retry classification. |
-| `python/tests/test_investigate.py`, `test_evaluate.py` | Add | Planner order, evidence IDs, duplicate prevention, missing data, stop reasons, and counter behavior. |
-| `python/tests/test_graph.py` | Edit | Default route unchanged; opt-in loop, checkpointed evidence, all conditional edges, exhausted limits, and failures. |
+| `python/src/sentinel/tools/diagnostics.py` | Implemented | `DiagnosticClient` protocol and HTTP adapter with explicit timeout, response validation, and fixed error categories. `httpx` is a direct dependency. The client does not retry; the graph will count and bound attempts. |
+| `python/src/sentinel/nodes/investigate.py` | Implemented | Deterministically choose the next allowlisted read and count bounded client attempts; never emit a URL or action. |
+| `python/src/sentinel/nodes/evaluate.py` | Implemented | Convert validated current responses to evidence, keep errors separate, and choose continue or terminal stop. |
+| `python/src/sentinel/graph.py` | Implemented for Phase 4 | Opt-in route, diagnostic execution node, conditional loop, terminal handoff, injected client, and build-time budget validation. |
+| `python/tests/test_diagnostics.py` | Partially implemented | Fake and HTTP-mock response validation, timeout, 404, 5xx, invalid JSON, and service mismatch are covered. Retry accounting awaits the graph loop. |
+| `python/tests/test_investigation_graph.py` | Implemented | Planner order, evidence IDs, missing data, stop reasons, retries, budgets, and checkpointed graph transitions. |
+| `python/tests/test_graph.py` | Existing | Default route unchanged; optional model and retrieval routes remain tested. |
 | `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`, `docs/STATUS.md` | Edit | Explain actual implemented behavior and limitations when Phase 4 code lands. |
 
 ### Loop limits and failure rules

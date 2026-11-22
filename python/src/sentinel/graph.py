@@ -1,4 +1,4 @@
-"""Validate an incident and route optional retrieval and model classification."""
+"""Classify incidents and optionally run bounded simulated diagnostics."""
 
 import math
 from typing import Protocol
@@ -8,9 +8,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from sentinel.nodes.classify import classify
+from sentinel.nodes.evaluate import evaluate_evidence
+from sentinel.nodes.investigate import DIAGNOSTIC_PLAN, plan_diagnostics, run_diagnostic
 from sentinel.nodes.llm_classify import ClassificationModel, build_llm_classify_node
 from sentinel.nodes.severity_policy import severity_policy
 from sentinel.schemas import InvestigationState, validate_incident
+from sentinel.tools.diagnostics import DiagnosticClient, validate_diagnostic_request
 
 
 class HistoricalRetriever(Protocol):
@@ -27,6 +30,18 @@ def receive_incident(state: InvestigationState) -> dict:
         "symptoms": [],
         "hypotheses": [],
         "evidence": [],
+        "diagnostic_plan": [dict(check) for check in DIAGNOSTIC_PLAN],
+        "completed_checks": [],
+        "pending_check": None,
+        "diagnostic_result": None,
+        "diagnostic_error": None,
+        "diagnostic_failures": [],
+        "investigation_round": 0,
+        "tool_call_count": 0,
+        "diagnostic_latency_ms": 0.0,
+        "last_attempts": 0,
+        "last_latency_ms": 0.0,
+        "investigation_stop_reason": None,
         "historical_matches": [],
         "retrieval_failure_reason": None,
     }
@@ -80,17 +95,68 @@ def severity_policy_node(state: InvestigationState) -> dict:
     )
 
 
+def route_investigation(
+    state: InvestigationState,
+    config: RunnableConfig,
+    *,
+    client: DiagnosticClient | None,
+) -> str:
+    """Require an explicit opt-in and a synthetic incident before any read."""
+    mode = config.get("configurable", {}).get("investigation_mode", "off")
+    if mode == "off":
+        return "off"
+    if mode != "simulated":
+        raise ValueError(f"Unsupported investigation mode: {mode}")
+    if client is None:
+        raise ValueError("Simulated investigation requires an injected client")
+    incident = state["incident"]
+    validate_diagnostic_request(incident["id"], incident["service"])
+    return "simulated"
+
+
+def route_plan(state: InvestigationState) -> str:
+    return "read" if state.get("pending_check") is not None else "stop"
+
+
+def route_evaluation(state: InvestigationState) -> str:
+    return (
+        "stop"
+        if state.get("investigation_stop_reason") == "incident_not_found"
+        else "continue"
+    )
+
+
+def finish_investigation(state: InvestigationState) -> dict:
+    """End Phase 4 with observations and an explicit stop reason, never a cause."""
+    return {"pending_check": None, "diagnostic_result": None}
+
+
 def build_graph(
     model: ClassificationModel | None = None,
     *,
     retriever: HistoricalRetriever | None = None,
     retrieval_top_k: int = 3,
+    diagnostic_client: DiagnosticClient | None = None,
+    max_investigation_rounds: int = 3,
+    max_tool_calls: int = 6,
+    max_attempts_per_read: int = 2,
 ):
     """Create a fresh graph and in-memory checkpoint store per caller."""
     if isinstance(retrieval_top_k, bool) or not isinstance(retrieval_top_k, int):
         raise ValueError("retrieval_top_k must be a positive integer")
     if retrieval_top_k < 1:
         raise ValueError("retrieval_top_k must be a positive integer")
+    for name, value, maximum in (
+        ("max_investigation_rounds", max_investigation_rounds, 3),
+        ("max_tool_calls", max_tool_calls, 6),
+        ("max_attempts_per_read", max_attempts_per_read, 2),
+    ):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 1 <= value <= maximum
+        ):
+            raise ValueError(f"{name} must be an integer from 1 to {maximum}")
 
     def retrieve_history(state: InvestigationState) -> dict:
         if retriever is None:
@@ -139,12 +205,36 @@ def build_graph(
     else:
         llm_classify_node = build_llm_classify_node(model)
 
+    def plan_node(state: InvestigationState) -> dict:
+        return plan_diagnostics(
+            state,
+            max_rounds=max_investigation_rounds,
+            max_tool_calls=max_tool_calls,
+        )
+
+    def run_node(state: InvestigationState) -> dict:
+        if diagnostic_client is None:
+            raise ValueError("Simulated investigation requires an injected client")
+        return run_diagnostic(
+            state,
+            client=diagnostic_client,
+            max_tool_calls=max_tool_calls,
+            max_attempts_per_read=max_attempts_per_read,
+        )
+
+    def investigation_route(state: InvestigationState, config: RunnableConfig) -> str:
+        return route_investigation(state, config, client=diagnostic_client)
+
     workflow = StateGraph(InvestigationState)
     workflow.add_node("receive_incident", receive_incident)
     workflow.add_node("classify", classify_baseline)
     workflow.add_node("retrieve_history", retrieve_history)
     workflow.add_node("llm_classify", llm_classify_node)
     workflow.add_node("severity_policy", severity_policy_node)
+    workflow.add_node("plan_diagnostics", plan_node)
+    workflow.add_node("run_diagnostic", run_node)
+    workflow.add_node("evaluate_evidence", evaluate_evidence)
+    workflow.add_node("finish_investigation", finish_investigation)
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -161,5 +251,21 @@ def build_graph(
         },
     )
     workflow.add_edge("llm_classify", "severity_policy")
-    workflow.add_edge("severity_policy", END)
+    workflow.add_conditional_edges(
+        "severity_policy",
+        investigation_route,
+        {"off": END, "simulated": "plan_diagnostics"},
+    )
+    workflow.add_conditional_edges(
+        "plan_diagnostics",
+        route_plan,
+        {"read": "run_diagnostic", "stop": "finish_investigation"},
+    )
+    workflow.add_edge("run_diagnostic", "evaluate_evidence")
+    workflow.add_conditional_edges(
+        "evaluate_evidence",
+        route_evaluation,
+        {"continue": "plan_diagnostics", "stop": "finish_investigation"},
+    )
+    workflow.add_edge("finish_investigation", END)
     return workflow.compile(checkpointer=InMemorySaver())

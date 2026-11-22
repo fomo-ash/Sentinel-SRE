@@ -1,6 +1,6 @@
 # Sentinel implementation roadmap
 
-Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases 2 and 3 are evaluated on small synthetic sets, and their model and retrieval routes remain opt-in. Later phases are plans, not implemented features. See [STATUS.md](STATUS.md) for the current checklist, [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) for detailed Phase 4–5 file work and acceptance gates, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2](../python/evaluation/PHASE2_REVIEW.md) and [Phase 3](../python/evaluation/PHASE3_REVIEW.md) reviews for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
+Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases 2 and 3 are evaluated on small synthetic sets, and their model and retrieval routes remain opt-in. The Phase 4 diagnostic loop is implemented on local fixtures with review pending; Phases 5–7 remain plans. See [STATUS.md](STATUS.md) for the current checklist, [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) for detailed Phase 4–5 file work and acceptance gates, [PHASE2_IMPLEMENTATION.md](PHASE2_IMPLEMENTATION.md) for function details, and the [Phase 2](../python/evaluation/PHASE2_REVIEW.md) and [Phase 3](../python/evaluation/PHASE3_REVIEW.md) reviews for measured results and limits. Use fixed synthetic fixtures and record measured results before claiming improvements.
 
 ## Phase 0 — Foundation (complete)
 
@@ -40,7 +40,7 @@ Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases
 
 ## Phase 4 — Planning and diagnostic loop
 
-- **Go reads implemented:** the loopback service validates matching synthetic health, metrics, and log fixtures and exposes read-only `GET /incidents/{id}/health`, `/metrics`, and `/logs`, with fixed JSON errors and Go contract tests. The Python diagnostic client and bounded graph loop remain pending.
+- **Diagnostic loop implemented; Phase 4 review pending:** the loopback Go service exposes fixed synthetic health, metrics, and log reads. The opt-in Python graph uses an injected local client to plan health, metrics, then logs; it checkpoints current evidence, attempts, latency, failures, and a stop reason. It retries only transient read failures once, with at most three rounds and six actual client attempts. The default graph remains classification only. Fake-client transition tests and a local end-to-end CLI smoke run passed; broader Phase 4 measurement and review remain pending.
 - **Detailed implementation plan:** [PHASE4_5_PLAN.md](PHASE4_5_PLAN.md) defines the local Go contracts, Python files, graph loop, budgets, failure rules, and verification gate.
 - **Learn:** conditional edges, bounded cycles, tool isolation, retries, and failure routes. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** plan diagnostic reads, query simulated logs/metrics/health via fake clients first, evaluate evidence, and route to another round or diagnosis. Set a maximum round count and tool-call budget.
