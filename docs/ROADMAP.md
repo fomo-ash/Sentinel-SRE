@@ -40,7 +40,7 @@ Each phase is a separate reviewable change. Phases 0–3 are implemented; Phases
 
 ## Phase 4 — Planning and diagnostic loop
 
-- **First slice implemented:** the loopback Go service now validates synthetic incident health fixtures and exposes read-only `GET /incidents/{id}/health`, with fixed JSON errors and Go contract tests. Metrics, logs, the Python diagnostic client, and the bounded graph loop remain pending.
+- **Go reads implemented:** the loopback service validates matching synthetic health and metrics fixtures and exposes read-only `GET /incidents/{id}/health` and `GET /incidents/{id}/metrics`, with fixed JSON errors and Go contract tests. Logs, the Python diagnostic client, and the bounded graph loop remain pending.
 - **Learn:** conditional edges, bounded cycles, tool isolation, retries, and failure routes. [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
 - **Tasks:** plan diagnostic reads, query simulated logs/metrics/health via fake clients first, evaluate evidence, and route to another round or diagnosis. Set a maximum round count and tool-call budget.
 - **Tests / done:** test both routes, exhausted budget, missing data, tool timeout, and retry limit. Record calls, latency, and failures.

@@ -1,0 +1,34 @@
+[
+  {
+    "incident_id": "diag-healthy",
+    "service": "api",
+    "observed_at": "2026-01-01T00:00:00Z",
+    "metrics": [
+      {"id": "http_error_ratio", "name": "http_error_ratio", "value": 0.002, "unit": "ratio", "window": "5m"},
+      {"id": "request_latency_p95_seconds", "name": "request_latency_p95_seconds", "value": 0.08, "unit": "seconds", "window": "5m"}
+    ]
+  },
+  {
+    "incident_id": "diag-degraded",
+    "service": "api",
+    "observed_at": "2026-01-01T00:05:00Z",
+    "metrics": [
+      {"id": "http_error_ratio", "name": "http_error_ratio", "value": 0.12, "unit": "ratio", "window": "5m"},
+      {"id": "request_latency_p95_seconds", "name": "request_latency_p95_seconds", "value": 1.9, "unit": "seconds", "window": "5m"}
+    ]
+  },
+  {
+    "incident_id": "diag-missing",
+    "service": "worker",
+    "observed_at": "2026-01-01T00:10:00Z",
+    "metrics": []
+  },
+  {
+    "incident_id": "diag-unhealthy",
+    "service": "worker",
+    "observed_at": "2026-01-01T00:15:00Z",
+    "metrics": [
+      {"id": "worker_queue_depth", "name": "worker_queue_depth", "value": 230, "unit": "items", "window": "5m"}
+    ]
+  }
+]

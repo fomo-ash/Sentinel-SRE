@@ -9,6 +9,7 @@ import (
 	"github.com/sentinel-sre/mock-service/internal/incidents"
 )
 
+// TestIncidentHealthReadOnlyContract checks reads, errors, and method rejection.
 func TestIncidentHealthReadOnlyContract(t *testing.T) {
 	store, err := incidents.DefaultStore()
 	if err != nil {

@@ -7,7 +7,8 @@ import (
 	"github.com/sentinel-sre/mock-service/internal/incidents"
 )
 
-// NewHandler exposes only local, read-only mock service routes.
+// NewHandler registers process health and synthetic incident reads.
+// The caller owns the validated store; main binds this handler to loopback.
 func NewHandler(store *incidents.Store) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -15,5 +16,6 @@ func NewHandler(store *incidents.Store) http.Handler {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 	mux.Handle("GET /incidents/{id}/health", incidentHealthHandler(store))
+	mux.Handle("GET /incidents/{id}/metrics", incidentMetricsHandler(store))
 	return mux
 }

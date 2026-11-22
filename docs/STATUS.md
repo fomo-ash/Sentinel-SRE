@@ -1,6 +1,6 @@
 # Sentinel status and file-by-file work list
 
-Updated 2026-11-02. This tracks implemented code, planned work, and the next files to edit. The current application is a simulated-incident foundation, not a production-ready SRE agent. See [ROADMAP.md](ROADMAP.md) for learning objectives and acceptance criteria.
+Updated 2026-11-22. This tracks implemented code, planned work, and the next files to edit. The current application is a simulated-incident foundation, not a production-ready SRE agent. See [ROADMAP.md](ROADMAP.md) for learning objectives and acceptance criteria.
 
 ## Done
 
@@ -15,7 +15,7 @@ Updated 2026-11-02. This tracks implemented code, planned work, and the next fil
 - [x] **Fixed retrieval evaluation:** `python/evaluation/retrieval_queries_v1.jsonl` has 21 project-authored relevance labels; `evaluate_retrieval.py` reports Recall@k, MRR@k, failures, latency, and input hashes. A local MiniLM run found the labeled case at rank 1 for 20/21 queries with no failures. [PHASE3_REVIEW.md](../python/evaluation/PHASE3_REVIEW.md) records the miss and limits.
 - [x] **Model boundary:** `python/src/sentinel/schemas.py` has a separate structured classifier output contract. `python/src/sentinel/nodes/llm_classify.py` accepts an injected model, validates output, and makes one repair attempt if the structure is invalid. `python/tests/test_llm_classify.py` covers success and failure paths; live synthetic results are recorded separately from automated tests.
 - [x] **Severity policy:** `python/src/sentinel/nodes/severity_policy.py` retains supported baseline severity and can map exact incident-summary references when the baseline is unknown. `python/tests/test_severity_policy.py` covers supported, unsupported, absent, and conflicting impact. Both graph routes now pass through this policy.
-- [x] **Local Go service:** `services/mock-service/cmd/server/main.go` and `internal/api/health.go` expose `/health` on loopback; `internal/api/health_test.go` contains a handler test. Go tests have not been run in this environment because Go is not installed.
+- [x] **Local Go diagnostic reads:** `services/mock-service/cmd/server/main.go` binds to loopback; `internal/api/` exposes process `/health` and read-only synthetic incident health and metrics routes. `internal/incidents/` validates matching embedded fixtures. Go tests cover response contracts, malformed fixtures, empty metrics, and defensive copies. Logs and Python investigation remain pending.
 
 ## Phase 2 — implemented and measured; model remains opt-in
 
@@ -40,5 +40,5 @@ The implementation checklist is complete. The deterministic path remains the def
 ## Current verification
 
 - As of 2026-11-02, all 95 Python tests pass; Ruff lint and formatting pass across `src`, `tests`, `evaluation`, and `retrieval`, and `pip check` reports no broken requirements. The history loader, embedding adapter, retriever, graph route, and metric evaluator have fake-model tests. A real local MiniLM run and a graph smoke run are recorded in the Phase 3 review. The optional LangChain package initializes locally, and GPT-6 Luna returned structured output in both prior live synthetic classification evaluations. Recheck from `python/` with `pytest -q tests`, `ruff check src tests evaluation retrieval`, and `ruff format --check src tests evaluation retrieval`.
-- Go is not installed in the current environment, so `go test ./...` remains a verification task for `services/mock-service/`.
+- On 2026-11-22, `go test ./...` and `go vet ./...` pass in `services/mock-service/` with a writable Go build cache. The service's process health and incident health/metrics routes use fixed local fixtures.
 - The repository has an optional OpenAI provider adapter, recorded synthetic classification and retrieval evaluations, and an opt-in graph path through an in-memory historical retrieval index. It has no vector database, MCP server, remediation path, or persistent checkpointer yet.

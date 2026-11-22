@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, and a local Go health service. Investigation and remediation are planned work; the current code is not production ready.
+Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, an optional evaluated OpenAI classification route, opt-in historical retrieval, in-memory checkpoints, and a local Go service with synthetic incident health and metrics reads. The Python investigation loop and remediation are planned work; the current code is not production ready.
 
 ## Prerequisites
 
@@ -81,7 +81,7 @@ An in-memory checkpoint lasts only while the graph process lives. Use a distinct
 
 ## Go service
 
-From `services/mock-service/`, run `make run` then `curl http://127.0.0.1:8080/health`. Run `make test` for its unit test. The service binds to loopback by default.
+From `services/mock-service/`, run `make run` then `curl http://127.0.0.1:8080/health` for process health or `curl http://127.0.0.1:8080/incidents/diag-degraded/metrics` for a fixed synthetic incident snapshot. Run `make test` for Go contract tests. The service binds to loopback by default.
 
 Copy `.env.example` to `.env` only when you need local overrides. Python reads `SENTINEL_MOCK_SERVICE_URL` from the process environment; this foundation does not load `.env` automatically.
 

@@ -9,6 +9,7 @@ import (
 	"github.com/sentinel-sre/mock-service/internal/incidents"
 )
 
+// TestHealth keeps process health independent of simulated incident snapshots.
 func TestHealth(t *testing.T) {
 	store, err := incidents.DefaultStore()
 	if err != nil {

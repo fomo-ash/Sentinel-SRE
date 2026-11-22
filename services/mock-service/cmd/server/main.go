@@ -10,6 +10,7 @@ import (
 	"github.com/sentinel-sre/mock-service/internal/incidents"
 )
 
+// main validates embedded fixtures before serving read-only routes on loopback.
 func main() {
 	store, err := incidents.DefaultStore()
 	if err != nil {

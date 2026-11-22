@@ -2,7 +2,9 @@
 
 Requires Go 1.22 or newer. Run `make run` and request `curl http://127.0.0.1:8080/health`. The process health endpoint returns `{"status":"ok"}`. Use `SENTINEL_MOCK_SERVICE_PORT` to change the port. The server binds to `127.0.0.1` only. Run `go test ./...` for fixture and HTTP contract tests.
 
-The first Phase 4 diagnostic read is `GET /incidents/{id}/health`. For example, `curl http://127.0.0.1:8080/incidents/diag-degraded/health` returns a fixed synthetic observation with `incident_id`, `service`, `observed_at`, `status`, and bounded `checks` (`id`, `status`, `detail`). The fixture IDs are `diag-healthy`, `diag-degraded`, `diag-missing`, and `diag-unhealthy`. `diag-missing` returns `unknown` with an empty checks list, rather than treating missing data as healthy. Unknown IDs return 404 with `{"error":"incident_not_found"}`; invalid IDs return 400 with `{"error":"invalid_incident_id"}`. The route accepts GET only.
+The first two Phase 4 diagnostic reads are `GET /incidents/{id}/health` and `GET /incidents/{id}/metrics`. For example, `curl http://127.0.0.1:8080/incidents/diag-degraded/health` returns a fixed synthetic observation with `incident_id`, `service`, `observed_at`, `status`, and bounded `checks` (`id`, `status`, `detail`). `curl http://127.0.0.1:8080/incidents/diag-degraded/metrics` returns a matching snapshot with bounded numeric metrics (`id`, `name`, `value`, `unit`, `window`). A window such as `5m` is a duration string.
 
-Fixtures contain observations only, with no cause or severity labels. Metrics, logs, diagnostic graph routing, and remediation are not implemented yet.
+The fixture IDs are `diag-healthy`, `diag-degraded`, `diag-missing`, and `diag-unhealthy`. `diag-missing` returns `unknown` health with no checks and an empty metrics list. Empty metrics means no observation, not a measured zero. Unknown IDs return 404 with `{"error":"incident_not_found"}`; invalid IDs return 400 with `{"error":"invalid_incident_id"}`. Go's `GET` route pattern also accepts HEAD; mutation methods such as POST are rejected.
+
+Fixtures contain observations only, with no cause or severity labels. Logs, diagnostic graph routing, and remediation are not implemented yet. The incident metrics are fixed fixtures; this service does not run Prometheus or expose process instrumentation at `/metrics`.
 
