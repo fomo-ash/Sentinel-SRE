@@ -206,21 +206,23 @@ def test_not_found_stops_after_one_attempt_without_evidence():
     assert result["diagnosis"]["hypotheses"] == []
 
 
-def test_transient_failure_retries_once_and_counts_failed_attempt():
-    client = FakeClient({"health": [DiagnosticReadError("timeout")]})
+@pytest.mark.parametrize("category", ["timeout", "unavailable"])
+def test_transient_failure_retries_once_and_counts_failed_attempt(category):
+    client = FakeClient({"health": [DiagnosticReadError(category)]})
     result, _ = _invoke(build_graph(diagnostic_client=client))
     assert [call[0] for call in client.calls] == ["health", "health", "metrics", "logs"]
     assert result["tool_call_count"] == 4
     assert result["investigation_round"] == 3
-    assert result["diagnostic_failures"][0]["category"] == "timeout"
+    assert result["diagnostic_failures"][0]["category"] == category
     assert result["diagnostic_failures"][0]["attempts"] == 1
     assert len(result["evidence"]) == 3
     assert result["diagnosis"]["status"] == "inconclusive"
 
 
-def test_call_budget_blocks_next_read_after_exhausted_retries():
+@pytest.mark.parametrize("category", ["timeout", "unavailable"])
+def test_call_budget_blocks_next_read_after_exhausted_retries(category):
     client = FakeClient(
-        {"health": [DiagnosticReadError("timeout"), DiagnosticReadError("timeout")]}
+        {"health": [DiagnosticReadError(category), DiagnosticReadError(category)]}
     )
     result, _ = _invoke(build_graph(diagnostic_client=client, max_tool_calls=2))
     assert [call[0] for call in client.calls] == ["health", "health"]
@@ -229,6 +231,10 @@ def test_call_budget_blocks_next_read_after_exhausted_retries():
     assert result["investigation_stop_reason"] == "max_tool_calls"
     assert result["evidence"] == []
     assert [item["attempts"] for item in result["diagnostic_failures"]] == [1, 2]
+    assert [item["category"] for item in result["diagnostic_failures"]] == [
+        category,
+        category,
+    ]
     assert result["diagnosis"]["status"] == "inconclusive"
 
 

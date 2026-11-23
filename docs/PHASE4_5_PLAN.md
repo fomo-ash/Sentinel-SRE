@@ -1,6 +1,6 @@
 # Phase 4 and Phase 5 implementation plan
 
-Status: **partially implemented**, written 2026-11-02 and updated 2026-11-23. Phases 0–3 are implemented. The Phase 4 loopback reads, Python diagnostic client, and opt-in bounded graph loop now exist. Phase 5 has a structured diagnosis contract and one narrow supported database authentication failure rule after every opt-in simulated investigation. Model diagnosis and comparative evaluation remain planned. Phase 4 measurement and review also remain pending. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
+Status: **Phase 4 accepted; Phase 5 partially implemented**, written 2026-11-02 and updated 2026-11-23. Phases 0–3 are implemented. The Phase 4 loopback reads, Python diagnostic client, and opt-in bounded graph loop passed the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md). Phase 5 has a structured diagnosis contract and one narrow supported database authentication failure rule after every opt-in simulated investigation. Model diagnosis and comparative evaluation remain planned. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
 
 ## Existing boundary to preserve
 
@@ -19,20 +19,17 @@ Status: **partially implemented**, written 2026-11-02 and updated 2026-11-23. Ph
 5. Phase 4 ends with evidence and an explicit stop reason. Phase 5 adds the diagnosis node after that handoff. Neither phase can call or expose remediation.
 6. Build and test each adapter with fakes before local HTTP or model calls. Live provider use remains opt-in and its labels remain hidden from prompts.
 
-## Proposed graph and state contract
+## Graph and state contract
 
 ```text
 START -> receive -> optional retrieve_history -> classify -> optional llm_classify
       -> severity_policy -> [investigation_mode?]
           off: END
           simulated: plan_diagnostics -> [action available?]
-              no: finish_investigation -> END (Phase 4)
+              no: finish_investigation -> diagnose_baseline -> END
               yes: run_diagnostic -> evaluate_evidence
                   continue: plan_diagnostics
-                  stop: finish_investigation -> END (Phase 4)
-
-Phase 5 changes only the terminal handoff:
-finish_investigation -> diagnose -> END
+                  stop: finish_investigation -> diagnose_baseline -> END
 ```
 
 The plan node chooses **one** allowlisted read per round from `health`, `metrics`, and `logs`. Use a deterministic order initially so every comparison arm sees the same diagnostic sequence. A missing or failed read can lead to the next kind, but no read is repeated except a bounded transient retry. Do not make the LLM generate URLs or tool names. The evaluation node checks remaining checks, missing data, and budgets; it does not infer a root cause.
@@ -56,7 +53,7 @@ Each evidence item should have `id`, `incident_id`, `service`, `kind` (`health|m
 
 ### What the user should get
 
-Given a valid simulated incident ID and `investigation_mode = "simulated"`, the graph checks the local fixture through a fake or local HTTP client, stores cited observations, and stops with a reason after a bounded number of reads. The default graph still returns classification only. A missing incident or failed tool produces a visible diagnostic failure and no fabricated evidence. The graph does not produce a cause diagnosis yet.
+Given a valid simulated incident ID and `investigation_mode = "simulated"`, the graph checks the local fixture through a fake or local HTTP client, stores cited observations, and stops with a reason after a bounded number of reads. The default graph still returns classification only. A missing incident or failed tool produces a visible diagnostic failure and no fabricated evidence. The Phase 4 nodes do not infer a cause; the downstream Phase 5 node makes a separate structured diagnosis.
 
 Example of the **new part** of a successful Phase 4 state (illustrative IDs and values, not a fixture to implement verbatim):
 
@@ -80,7 +77,7 @@ Example of the **new part** of a successful Phase 4 state (illustrative IDs and 
 }
 ```
 
-The existing `incident`, classification, and `final_severity` fields remain in the same state. There is no diagnosis field on the Phase 4 route.
+The existing `incident`, classification, and `final_severity` fields remain in the same state. The example omits the downstream Phase 5 diagnosis fields.
 
 ### Local Go diagnostic contract
 
@@ -104,20 +101,20 @@ Use JSON error bodies with stable codes, validate path IDs and query values, and
 | `services/mock-service/internal/incidents/store_test.go` | Add | Valid fixture load, duplicate IDs, malformed record, missing data, and lookup behavior. |
 | `services/mock-service/internal/api/health.go`, `metrics.go`, and `logs.go` | Implemented | Register three read-only incident routes; encode stable JSON and error codes; enforce log limit. |
 | `services/mock-service/internal/api/diagnostics_test.go`, `metrics_test.go`, and `logs_test.go` | Implemented | `httptest` contract for health, metrics, logs, 400, 404, empty data, content type, and bounded output. |
-| `services/mock-service/internal/api/health.go` | Edit | Keep process health; make `NewHandler` accept an injected store or a small reader interface. |
-| `services/mock-service/internal/api/health_test.go` | Edit | Adapt handler construction and confirm existing `/health` behavior. |
-| `services/mock-service/cmd/server/main.go` | Edit | Load local fixture store once and inject it into the loopback handler; fail startup on invalid fixtures. |
-| `services/mock-service/README.md` | Edit | Document route examples, fixture IDs, error codes, and loopback-only behavior. |
+| `services/mock-service/internal/api/health.go` | Implemented | Process health remains separate; `NewHandler` accepts the fixture store. |
+| `services/mock-service/internal/api/health_test.go` | Implemented | Confirms process `/health` behavior. |
+| `services/mock-service/cmd/server/main.go` | Implemented | Loads local fixtures and binds the handler to loopback. |
+| `services/mock-service/README.md` | Implemented | Documents route examples, fixture IDs, error codes, and loopback-only behavior. |
 | `python/src/sentinel/schemas.py` | Implemented for Phase 4 | Typed diagnostic action, evidence, failures, counters, and stop reason. |
-| `python/src/sentinel/config.py` | Edit | Keep local URL default; add positive timeout and budget settings with safe defaults. |
+| `python/src/sentinel/config.py` | Implemented for URL | Keeps the local URL default; the HTTP client owns its positive timeout and `build_graph` validates bounded budgets. Environment overrides for those limits are optional future work. |
 | `python/src/sentinel/tools/diagnostics.py` | Implemented | `DiagnosticClient` protocol and HTTP adapter with explicit timeout, response validation, and fixed error categories. `httpx` is a direct dependency. The client does not retry; the graph will count and bound attempts. |
 | `python/src/sentinel/nodes/investigate.py` | Implemented | Deterministically choose the next allowlisted read and count bounded client attempts; never emit a URL or action. |
 | `python/src/sentinel/nodes/evaluate.py` | Implemented | Convert validated current responses to evidence, keep errors separate, and choose continue or terminal stop. |
 | `python/src/sentinel/graph.py` | Implemented for Phase 4 | Opt-in route, diagnostic execution node, conditional loop, terminal handoff, injected client, and build-time budget validation. |
-| `python/tests/test_diagnostics.py` | Partially implemented | Fake and HTTP-mock response validation, timeout, 404, 5xx, invalid JSON, and service mismatch are covered. Retry accounting awaits the graph loop. |
+| `python/tests/test_diagnostics.py` | Implemented | Fake and HTTP-mock response validation, timeout, 404, 5xx, invalid JSON, and service mismatch are covered; graph tests cover retry accounting. |
 | `python/tests/test_investigation_graph.py` | Implemented | Planner order, evidence IDs, missing data, stop reasons, retries, budgets, and checkpointed graph transitions. |
 | `python/tests/test_graph.py` | Existing | Default route unchanged; optional model and retrieval routes remain tested. |
-| `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`, `docs/STATUS.md` | Edit | Explain actual implemented behavior and limitations when Phase 4 code lands. |
+| `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`, `docs/STATUS.md` | Implemented | Explain the behavior and limits; the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md) records acceptance measurements. |
 
 ### Loop limits and failure rules
 
@@ -128,11 +125,11 @@ Use JSON error bodies with stable codes, validate path IDs and query values, and
 
 ### Phase 4 acceptance gate
 
-- [ ] Go `go test ./...` passes from `services/mock-service/`; the server still binds to loopback and its process `/health` contract is unchanged.
-- [ ] Python fake-client and HTTP adapter tests cover success, empty data, malformed payloads, timeout, 404, 5xx, bounded retry, and service/incident mismatch.
-- [ ] Graph tests prove default classification behavior, the `continue` and `stop` edges, checkpointed evidence, no extra call after either budget, and no evidence fabricated from a failure or history.
-- [ ] A local end-to-end smoke run reads fixture diagnostics through the Go service. Record call counts, latency, and failure categories.
-- [ ] No diagnosis claim, approval interrupt, or remediation action is present in the Phase 4 graph.
+- [x] Go `go test -count=1 ./...` passes from `services/mock-service/`; the server still binds to loopback and its process `/health` contract is unchanged.
+- [x] Python fake-client and HTTP adapter tests cover success, empty data, malformed payloads, timeout, 404, 5xx, bounded retry, and service/incident mismatch.
+- [x] Graph tests prove default classification behavior, the `continue` and `stop` edges, checkpointed evidence, no extra call after either budget, and no evidence fabricated from a failure or history.
+- [x] Local end-to-end smoke runs read fixture diagnostics through the Go service and record call counts, latency, and failure categories in the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md).
+- [x] Phase 4 observations make no cause claim and invoke no approval or remediation action. The downstream Phase 5 node produces a separate structured diagnosis after `finish_investigation`.
 
 ## Phase 5 — grounded diagnosis and comparative evaluation
 

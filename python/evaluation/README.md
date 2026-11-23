@@ -56,3 +56,7 @@ python evaluation/evaluate_retrieval.py \
 The first run may download model weights to the local cache. No OpenAI key is needed. Keep this query set fixed after recording results; create a new version for revised labels or broader scenarios.
 
 The first recorded local-model result and its limitations are in [PHASE3_REVIEW.md](PHASE3_REVIEW.md). If the model host is unavailable and you already have a verified local model directory, pass `--model /path/to/model --model-id sentence-transformers/all-MiniLM-L6-v2`; the evaluator records the local `model.safetensors` hash.
+
+## Phase 4 simulated diagnostics review
+
+[PHASE4_REVIEW.md](PHASE4_REVIEW.md) records the Go and Python test gates, one local CLI run for each of the five fixed diagnostic fixtures, unknown-ID and failure cases, call counts, stop reasons, evidence counts, diagnostic latency, and fixture hashes. These local measurements verify the bounded read-only loop and are not a performance benchmark or a diagnosis-quality evaluation.
