@@ -3,22 +3,10 @@
 import os
 from typing import Protocol
 
-from pydantic import ConfigDict, TypeAdapter, with_config
-from typing_extensions import TypedDict
+from pydantic import TypeAdapter
 
-from sentinel.schemas import DiagnosisFailure, DiagnosisHypothesis, DiagnosisStatus
-
-
-@with_config(ConfigDict(extra="forbid"))
-class ModelDiagnosis(TypedDict):
-    """Model-owned fields; the graph assigns provenance and validates citations."""
-
-    status: DiagnosisStatus
-    summary: str
-    hypotheses: list[DiagnosisHypothesis]
-    unresolved_questions: list[str]
-    historical_context_ids: list[str]
-
+from sentinel.nodes.diagnose import TemporaryProviderError
+from sentinel.schemas import ModelDiagnosis
 
 DIAGNOSIS_SYSTEM_PROMPT = """You investigate a SIMULATED service incident.
 Your task is to interpret the supplied, read-only diagnostic observations and
@@ -121,14 +109,6 @@ class StructuredChatModel(Protocol):
     """Minimal interface needed from a LangChain structured model."""
 
     def invoke(self, messages: list[dict[str, str]]) -> object: ...
-
-
-class TemporaryProviderError(Exception):
-    """Fixed retry reason without raw provider details."""
-
-    def __init__(self, reason: DiagnosisFailure):
-        self.reason = reason
-        super().__init__(reason)
 
 
 class ProviderError(Exception):

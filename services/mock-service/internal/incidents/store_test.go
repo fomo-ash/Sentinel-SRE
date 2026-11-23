@@ -36,6 +36,15 @@ func TestDefaultStoreAndDefensiveCopy(t *testing.T) {
 	if !ok || dbLogs.ObservedAt != dbAuth.ObservedAt || len(dbLogs.Entries) != 1 {
 		t.Fatalf("database auth logs do not match health: %#v", dbLogs)
 	}
+	challengeHealth, ok := store.Health("diag-db-auth-alt")
+	if !ok || challengeHealth.Service != "api" || len(challengeHealth.Checks) != 1 {
+		t.Fatalf("challenge health fixture was not loaded: %#v", challengeHealth)
+	}
+	challengeMetrics, metricsOK := store.Metrics("diag-db-auth-alt")
+	challengeLogs, logsOK := store.Logs("diag-db-auth-alt")
+	if !metricsOK || !logsOK || challengeMetrics.ObservedAt != challengeHealth.ObservedAt || challengeLogs.ObservedAt != challengeHealth.ObservedAt {
+		t.Fatal("challenge diagnostic snapshots are missing or misaligned")
+	}
 }
 
 // TestLoadHealthRejectsInvalidFixtures covers whole-file and record failures.

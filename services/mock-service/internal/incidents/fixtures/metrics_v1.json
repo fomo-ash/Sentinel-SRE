@@ -38,5 +38,13 @@
     "metrics": [
       {"id": "db_connection_failures", "name": "db_connection_failures", "value": 8, "unit": "count", "window": "5m"}
     ]
+  },
+  {
+    "incident_id": "diag-db-auth-alt",
+    "service": "api",
+    "observed_at": "2026-01-01T00:25:00Z",
+    "metrics": [
+      {"id": "db_connection_failures", "name": "db_connection_failures", "value": 5, "unit": "count", "window": "5m"}
+    ]
   }
 ]

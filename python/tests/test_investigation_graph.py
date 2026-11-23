@@ -363,3 +363,92 @@ def test_bad_mode_client_or_id_fails_before_diagnostic_call():
 def test_invalid_budgets_are_rejected_at_build_time(setting, value):
     with pytest.raises(ValueError, match=setting):
         build_graph(**{setting: value})
+
+
+def test_model_diagnosis_is_opt_in_and_checkpointed_without_changing_severity():
+    class FakeModel:
+        def __init__(self):
+            self.calls = []
+
+        def invoke(self, payload):
+            self.calls.append(payload)
+            return {
+                "status": "inconclusive",
+                "summary": "Current observations do not establish a cause.",
+                "hypotheses": [],
+                "unresolved_questions": ["Which dependency caused the errors?"],
+                "historical_context_ids": [],
+            }
+
+    model = FakeModel()
+    client = FakeClient()
+    graph = build_graph(diagnostic_client=client, diagnosis_model=model)
+    baseline, _ = _invoke(graph, thread_id="diagnosis-default")
+    assert baseline["diagnosis_source"] == "deterministic"
+    assert model.calls == []
+
+    config = {
+        "configurable": {
+            "thread_id": "diagnosis-model",
+            "investigation_mode": "simulated",
+            "diagnosis_mode": "llm",
+        }
+    }
+    result = graph.invoke(
+        {
+            "incident": {
+                "id": "diag-degraded",
+                "service": "api",
+                "summary": "API requests are degraded for several users.",
+            }
+        },
+        config,
+    )
+    assert result["diagnosis_source"] == "llm"
+    assert result["diagnosis"]["status"] == "inconclusive"
+    assert result["diagnosis_model_calls"] == 1
+    assert result["final_severity"] == baseline["final_severity"]
+    assert graph.get_state(config).values == result
+    assert len(model.calls) == 1
+
+
+def test_missing_or_invalid_diagnosis_mode_fails_before_reads():
+    client = FakeClient()
+    graph = build_graph(diagnostic_client=client)
+    with pytest.raises(ValueError, match="requires an injected diagnosis model"):
+        graph.invoke(
+            {
+                "incident": {
+                    "id": "diag-degraded",
+                    "service": "api",
+                    "summary": "API requests are slow.",
+                }
+            },
+            {
+                "configurable": {
+                    "thread_id": "missing-model",
+                    "investigation_mode": "simulated",
+                    "diagnosis_mode": "llm",
+                }
+            },
+        )
+    assert client.calls == []
+
+    with pytest.raises(ValueError, match="Unsupported diagnosis mode"):
+        graph.invoke(
+            {
+                "incident": {
+                    "id": "diag-degraded",
+                    "service": "api",
+                    "summary": "API requests are slow.",
+                }
+            },
+            {
+                "configurable": {
+                    "thread_id": "invalid-diagnosis-mode",
+                    "investigation_mode": "simulated",
+                    "diagnosis_mode": "other",
+                }
+            },
+        )
+    assert client.calls == []

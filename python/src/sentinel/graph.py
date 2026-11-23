@@ -8,7 +8,11 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from sentinel.nodes.classify import classify
-from sentinel.nodes.diagnose import diagnose_baseline
+from sentinel.nodes.diagnose import (
+    DiagnosisModel,
+    build_llm_diagnose_node,
+    diagnose_baseline,
+)
 from sentinel.nodes.evaluate import evaluate_evidence
 from sentinel.nodes.investigate import DIAGNOSTIC_PLAN, plan_diagnostics, run_diagnostic
 from sentinel.nodes.llm_classify import ClassificationModel, build_llm_classify_node
@@ -46,6 +50,9 @@ def receive_incident(state: InvestigationState) -> dict:
         "diagnosis": None,
         "diagnosis_source": None,
         "diagnosis_failure_reason": None,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": False,
+        "diagnosis_latency_ms": 0.0,
         "historical_matches": [],
         "retrieval_failure_reason": None,
     }
@@ -104,6 +111,7 @@ def route_investigation(
     config: RunnableConfig,
     *,
     client: DiagnosticClient | None,
+    diagnosis_model: DiagnosisModel | None = None,
 ) -> str:
     """Require an explicit opt-in and a synthetic incident before any read."""
     mode = config.get("configurable", {}).get("investigation_mode", "off")
@@ -113,6 +121,9 @@ def route_investigation(
         raise ValueError(f"Unsupported investigation mode: {mode}")
     if client is None:
         raise ValueError("Simulated investigation requires an injected client")
+    diagnosis_mode = route_diagnosis(state, config)
+    if diagnosis_mode == "llm" and diagnosis_model is None:
+        raise ValueError("LLM diagnosis mode requires an injected diagnosis model")
     incident = state["incident"]
     validate_diagnostic_request(incident["id"], incident["service"])
     return "simulated"
@@ -135,12 +146,21 @@ def finish_investigation(state: InvestigationState) -> dict:
     return {"pending_check": None, "diagnostic_result": None}
 
 
+def route_diagnosis(state: InvestigationState, config: RunnableConfig) -> str:
+    """The deterministic diagnosis is the default after investigation."""
+    mode = config.get("configurable", {}).get("diagnosis_mode", "deterministic")
+    if mode in ("deterministic", "llm"):
+        return mode
+    raise ValueError(f"Unsupported diagnosis mode: {mode}")
+
+
 def build_graph(
     model: ClassificationModel | None = None,
     *,
     retriever: HistoricalRetriever | None = None,
     retrieval_top_k: int = 3,
     diagnostic_client: DiagnosticClient | None = None,
+    diagnosis_model: DiagnosisModel | None = None,
     max_investigation_rounds: int = 3,
     max_tool_calls: int = 6,
     max_attempts_per_read: int = 2,
@@ -209,6 +229,14 @@ def build_graph(
     else:
         llm_classify_node = build_llm_classify_node(model)
 
+    if diagnosis_model is None:
+
+        def llm_diagnose_node(state: InvestigationState) -> dict:
+            raise ValueError("LLM diagnosis mode requires an injected diagnosis model")
+
+    else:
+        llm_diagnose_node = build_llm_diagnose_node(diagnosis_model)
+
     def plan_node(state: InvestigationState) -> dict:
         return plan_diagnostics(
             state,
@@ -227,7 +255,12 @@ def build_graph(
         )
 
     def investigation_route(state: InvestigationState, config: RunnableConfig) -> str:
-        return route_investigation(state, config, client=diagnostic_client)
+        return route_investigation(
+            state,
+            config,
+            client=diagnostic_client,
+            diagnosis_model=diagnosis_model,
+        )
 
     workflow = StateGraph(InvestigationState)
     workflow.add_node("receive_incident", receive_incident)
@@ -240,6 +273,7 @@ def build_graph(
     workflow.add_node("evaluate_evidence", evaluate_evidence)
     workflow.add_node("finish_investigation", finish_investigation)
     workflow.add_node("diagnose_baseline", diagnose_baseline)
+    workflow.add_node("llm_diagnose", llm_diagnose_node)
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -272,6 +306,11 @@ def build_graph(
         route_evaluation,
         {"continue": "plan_diagnostics", "stop": "finish_investigation"},
     )
-    workflow.add_edge("finish_investigation", "diagnose_baseline")
+    workflow.add_conditional_edges(
+        "finish_investigation",
+        route_diagnosis,
+        {"deterministic": "diagnose_baseline", "llm": "llm_diagnose"},
+    )
     workflow.add_edge("diagnose_baseline", END)
+    workflow.add_edge("llm_diagnose", END)
     return workflow.compile(checkpointer=InMemorySaver())

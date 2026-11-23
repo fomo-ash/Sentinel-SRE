@@ -1,6 +1,6 @@
 # Phase 4 and Phase 5 implementation plan
 
-Status: **Phase 4 accepted; Phase 5 partially implemented**, written 2026-11-02 and updated 2026-11-23. Phases 0–3 are implemented. The Phase 4 loopback reads, Python diagnostic client, and opt-in bounded graph loop passed the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md). Phase 5 has a structured diagnosis contract, one narrow supported database authentication failure rule, and an optional provider adapter with a grounded prompt. The model diagnosis graph node and comparative evaluation remain planned. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
+Status: **Phases 4 and 5 accepted on synthetic fixtures**, written 2026-11-02 and updated 2026-11-23. The bounded diagnostic loop passed the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md). The diagnosis graph routes and three-arm comparison passed the workflow gate in the [Phase 5 review](../python/evaluation/PHASE5_REVIEW.md), which records a held-out supported-cause miss and no production claim. This plan records the implemented contracts and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
 
 ## Existing boundary to preserve
 
@@ -26,10 +26,14 @@ START -> receive -> optional retrieve_history -> classify -> optional llm_classi
       -> severity_policy -> [investigation_mode?]
           off: END
           simulated: plan_diagnostics -> [action available?]
-              no: finish_investigation -> diagnose_baseline -> END
+              no: finish_investigation -> [diagnosis_mode?]
+                  deterministic: diagnose_baseline -> END
+                  llm: diagnose_model -> END
               yes: run_diagnostic -> evaluate_evidence
                   continue: plan_diagnostics
-                  stop: finish_investigation -> diagnose_baseline -> END
+                  stop: finish_investigation -> [diagnosis_mode?]
+                      deterministic: diagnose_baseline -> END
+                      llm: diagnose_model -> END
 ```
 
 The plan node chooses **one** allowlisted read per round from `health`, `metrics`, and `logs`. Use a deterministic order initially so every comparison arm sees the same diagnostic sequence. A missing or failed read can lead to the next kind, but no read is repeated except a bounded transient retry. Do not make the LLM generate URLs or tool names. The evaluation node checks remaining checks, missing data, and budgets; it does not infer a root cause.
@@ -46,6 +50,7 @@ Planned state additions in `schemas.py`:
 | `investigation_stop_reason` | One of `checks_complete`, `incident_not_found`, `max_rounds`, `max_tool_calls`, or `no_usable_data`. |
 | `diagnosis` (Phase 5) | Structured result with `supported` or `inconclusive` status, hypotheses, evidence IDs, and unresolved questions; replaces the unused string placeholder. |
 | `diagnosis_source` / `diagnosis_failure_reason` (Phase 5) | Distinguish deterministic, model, and fallback results without overwriting classification source or failure. |
+| `diagnosis_model_calls` / `diagnosis_repair_attempted` / `diagnosis_latency_ms` | Actual provider attempts, one-repair indicator, and diagnosis-node elapsed time; reset at intake. |
 
 Each evidence item should have `id`, `incident_id`, `service`, `kind` (`health|metric|log`), `source_ref`, `observed_at`, and `observation`. Use stable fixture item IDs to derive evidence IDs; validate that a returned response belongs to the requested incident and service. Cap stored observations and log text so checkpoints stay small.
 
@@ -165,20 +170,19 @@ If historical IDs are present, they appear only in `historical_context_ids`. A s
 
 | File | Edit or add | Expected responsibility |
 | --- | --- | --- |
-| `python/src/sentinel/schemas.py` | Implemented for Phase 5 contract | Separate diagnosis output contract, typed state result, source/failure enums, and current-evidence reference validation. Cause inference remains in the planned diagnosis node. |
-| `python/src/sentinel/nodes/diagnose.py` | Partially implemented | Deterministic baseline validates an abstaining result or supports explicit database login rejection using current health and log observations. An injected model node, repair/retry, and comparative evaluation remain pending. |
-| `python/src/sentinel/openai_diagnoser.py` | Implemented, not wired | Optional LangChain/OpenAI structured-output adapter with a detailed evidence-grounded prompt, fixed provider errors, usage accounting, and no provider initialization on the default route. The model node still needs repair/retry and citation validation. |
+| `python/src/sentinel/schemas.py` | Implemented | Separate diagnosis output contract, typed state result, source/failure enums, current-evidence reference validation, and model-call counters. |
+| `python/src/sentinel/nodes/diagnose.py` | Implemented | Deterministic baseline and injected model route; narrow current-evidence policy, one grounded repair, bounded transient retries, and inconclusive fallback. |
+| `python/src/sentinel/openai_diagnoser.py` | Implemented and opt-in | LangChain/OpenAI structured-output adapter with a detailed evidence-grounded prompt, fixed provider errors, usage accounting, and no provider initialization on the default route. |
 | `python/tests/test_openai_diagnoser.py` | Implemented | Fake structured client verifies prompt boundaries, optional factory configuration, usage accounting, refusal pass-through, and fixed provider error categories without network calls. |
-| `python/src/sentinel/graph.py` | Implemented for deterministic baseline | Route Phase 4's `finish_investigation` handoff to deterministic diagnosis; leave the classification-only default unchanged. Model diagnosis routing remains pending. |
-| `python/tests/test_diagnose.py` | Partially implemented | Deterministic supported and inconclusive results are covered; add model output repair, timeout, and fallback tests when the model node is wired. |
-| `python/tests/test_graph.py` | Edit | Check diagnosis path, checkpointed references, unchanged severity, no-diagnostics abstention, and all terminal routes. |
-| `services/mock-service/internal/incidents/fixtures/` | Extend carefully | Add current observations for evaluation cases without storing diagnosis labels or expected causes in the service. |
-| `python/evaluation/investigation_dev_v1.jsonl` | Add | Small implementation set with incident input, fixture ID, hidden cause/abstention labels, expected evidence IDs, and label rationale. |
-| `python/evaluation/investigation_holdout_v1.jsonl` | Add | Separate frozen challenge cases, never used to tune prompts or policy. Seek independent human label review; otherwise mark results exploratory. |
-| `python/evaluation/evaluate_investigation.py` | Add | Run three comparison arms on identical diagnostic fixtures with fresh thread IDs, hide labels from graph inputs, record per-case outputs and aggregate quality/cost metrics. |
-| `python/tests/test_evaluate_investigation.py` | Add | Label isolation, same fixture and budget across arms, deterministic metric calculations, malformed labels, and provider-failure accounting. |
-| `python/evaluation/PHASE5_REVIEW.md` and versioned result JSON | Add after measurement | Record dataset hashes, model/config versions, per-arm metrics, misses, reviewer method, and limits. |
-| `python/evaluation/README.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`, `docs/STATUS.md` | Edit | Document actual diagnosis contract, invocation, evaluation protocol, and remaining deployment limits. |
+| `python/src/sentinel/graph.py` | Implemented | Route Phase 4's handoff to deterministic or explicit model diagnosis; leave classification-only default unchanged. |
+| `python/tests/test_diagnose.py` and `test_investigation_graph.py` | Implemented | Cover supported and inconclusive results, citations, repair/retry, fallback, checkpointed routing, and unchanged severity. |
+| `services/mock-service/internal/incidents/fixtures/` | Extended | Add alternate current observations for a held-out case without storing diagnosis labels in the service. |
+| `python/evaluation/investigation_dev_v1.jsonl` | Added | Three implementation cases with labels and rationale kept outside graph/provider input. |
+| `python/evaluation/investigation_holdout_v1.jsonl` | Added | Three separate challenge cases, preserved after the held-out miss; labels are project-authored. |
+| `python/evaluation/evaluate_investigation.py` | Added | Three arms on identical fixture data and fresh threads, with per-case outputs and aggregate quality, usage, and latency metrics. |
+| `python/tests/test_evaluate_investigation.py` | Added | Label isolation, same fixture and budget, metric calculations, malformed labels, and provider-failure accounting. |
+| `python/evaluation/PHASE5_REVIEW.md` and versioned result JSON | Added | Hashes, model IDs, metrics, misses, reviewer limit, and interpretation. |
+| `python/evaluation/README.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`, `docs/STATUS.md` | Updated | Diagnosis contract, invocation, comparison protocol, and remaining deployment limits. |
 
 ### Comparison protocol
 
@@ -204,12 +208,12 @@ Do not compare arms on different diagnostic observations. Do not reuse the Phase
 
 ### Phase 5 acceptance gate
 
-- [ ] Every supported finding cites current-incident evidence; history and tool failures are rejected as citations.
-- [ ] Ambiguous, missing, contradictory, and tool-failure cases produce a useful `inconclusive` result rather than an invented cause.
-- [ ] Tests cover model success, invalid output, one repair, exhausted repair/retry, timeout, fallback, and unchanged final severity.
-- [ ] All three arms run on the same frozen diagnostic fixtures and independent checkpoint threads; labels stay hidden from model and retrieval input.
-- [ ] A versioned result and review report every required metric, mismatches, failure rate, and limitations. No improvement or production-readiness claim is made without measured, reviewed evidence.
-- [ ] The graph still has no path to remediation. Phase 6 will add explicit checkpointed human approval before any simulated action.
+- [x] Every supported finding cites current-incident evidence; history and tool failures are rejected as citations.
+- [x] Ambiguous, missing, contradictory, and tool-failure cases produce an `inconclusive` result rather than an invented cause.
+- [x] Tests cover model success, invalid output, one repair, exhausted repair/retry, timeout, fallback, and unchanged final severity.
+- [x] All three arms run on the same frozen diagnostic fixtures and independent checkpoint threads; labels stay hidden from model and retrieval input.
+- [x] Versioned results and the review report required measured metrics, mismatches, failure rates, and limits. Blinded history usefulness remains unmeasured because no independent reviewer was available; the review makes no benefit or production claim.
+- [x] The graph still has no path to remediation. Phase 6 will add explicit checkpointed human approval before any simulated action.
 
 ## Recommended implementation order
 
@@ -220,4 +224,4 @@ Do not compare arms on different diagnostic observations. Do not reuse the Phase
 5. **Phase 5A — diagnosis:** define structured schema and deterministic abstaining baseline, then model adapter and citation validation with fake tests.
 6. **Phase 5B — graph and evaluation:** wire terminal diagnosis, freeze development/held-out cases, implement three-arm evaluator, run and review results.
 
-Do not start Phase 6 remediation while Phase 4–5 failure paths, citations, and evaluation remain unverified.
+Phase 6 may now implement **simulated** remediation only after adding a checkpointed human approval gate; Phase 5 diagnosis does not itself authorize any action.

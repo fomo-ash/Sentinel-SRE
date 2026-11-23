@@ -60,3 +60,22 @@ The first recorded local-model result and its limitations are in [PHASE3_REVIEW.
 ## Phase 4 simulated diagnostics review
 
 [PHASE4_REVIEW.md](PHASE4_REVIEW.md) records the Go and Python test gates, one local CLI run for each of the five fixed diagnostic fixtures, unknown-ID and failure cases, call counts, stop reasons, evidence counts, diagnostic latency, and fixture hashes. These local measurements verify the bounded read-only loop and are not a performance benchmark or a diagnosis-quality evaluation.
+
+## Phase 5 diagnosis comparison
+
+`investigation_dev_v1.jsonl` and `investigation_holdout_v1.jsonl` are separate, three-case, project-authored synthetic sets. They name a `diag-` fixture ID in the embedded Go snapshots and keep `expected_severity`, `expected_symptoms`, `expected_status`, `expected_mechanism`, `expected_evidence_ids`, and `label_reason` inside the evaluator. Only incident ID, service, and summary enter the graph. Neither diagnosis labels nor evidence-reference labels enter provider prompts or retrieval queries. The held-out set uses different cases and includes `diag-db-auth-alt`, whose health and log observations express the same SQLSTATE with different IDs and wording. Keep both v1 files unchanged after the recorded run; use v2 for revisions. Their labels have not had independent human review.
+
+`evaluate_investigation.py` reads Go fixture JSON with an in-process diagnostic client, so the Go HTTP service need not run. For each case it runs `baseline` (deterministic classification and diagnosis), `model` (OpenAI classification and diagnosis), and `model_history` (the same model route with local MiniLM history). All arms use the same frozen snapshot, deterministic health/metrics/log plan, read budgets, and independent checkpoint threads. The evaluator rejects malformed labels and duplicate case IDs within a dataset and keeps reference fields out of the graph input; tests check that the two supplied datasets are disjoint. The results contain hashes of datasets and fixtures, model IDs, per-case outputs, current citation validity, unsupported final claims, severity and symptom metrics, diagnosis status and supported-case recall, abstention rate, repair/fallback reasons, diagnostic and model-call counts, mean and p95 latency, and provider-reported tokens. Failed calls may not report usage. Cost is not inferred without explicit provider rates.
+
+Install the optional extras from `python/` with `python -m pip install -e '.[llm,retrieval,dev]'`. Set `OPENAI_API_KEY` and `SENTINEL_OPENAI_MODEL` in the local environment, or supply an ignored local `.env` file explicitly. Live calls require `--live` and use only synthetic data. Run development before holdout:
+
+```powershell
+python evaluation/evaluate_investigation.py --live --env-file ../.env `
+  --dataset evaluation/investigation_dev_v1.jsonl `
+  --output evaluation/results_phase5_dev_v1.json
+python evaluation/evaluate_investigation.py --live --env-file ../.env `
+  --dataset evaluation/investigation_holdout_v1.jsonl `
+  --output evaluation/results_phase5_holdout_v1.json
+```
+
+The retrieval model may need a first-time download. Use `--retrieval-model <verified-local-directory>` for cached weights. `--live` is required even when an env file exists. The recorded results and case-level interpretation are in [PHASE5_REVIEW.md](PHASE5_REVIEW.md); [PHASE5_IMPLEMENTATION.md](../../docs/PHASE5_IMPLEMENTATION.md) explains the graph and adapter contract. The separate [Phase 3 review](PHASE3_REVIEW.md) reports fixed-query Retrieval Recall@k and MRR@k. The Phase 5 set has no independent blinded history-usefulness rubric, so it does not establish a benefit from retrieval.

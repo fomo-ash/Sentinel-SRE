@@ -1,8 +1,15 @@
 """Safety behavior of the standalone deterministic diagnosis baseline."""
 
+import json
 from copy import deepcopy
 
-from sentinel.nodes.diagnose import diagnose_baseline
+import pytest
+
+from sentinel.nodes.diagnose import (
+    TemporaryProviderError,
+    build_llm_diagnose_node,
+    diagnose_baseline,
+)
 
 
 def _state():
@@ -169,4 +176,176 @@ def test_history_is_context_only_and_duplicate_ids_are_removed():
     update = diagnose_baseline(state)
     assert update["diagnosis"]["historical_context_ids"] == ["hist-one"]
     assert update["diagnosis"]["hypotheses"] == []
+    assert update["diagnosis"]["status"] == "inconclusive"
+
+
+class FakeDiagnosisModel:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.requests = []
+
+    def invoke(self, request):
+        self.requests.append(request)
+        result = self.responses.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def _model_result(*, supported=False):
+    return {
+        "status": "supported" if supported else "inconclusive",
+        "summary": "Database login rejection observed."
+        if supported
+        else "Cause unknown.",
+        "hypotheses": (
+            [
+                {
+                    "cause": "Database login rejection prevents API connections.",
+                    "supporting_evidence_ids": [
+                        "diag-db-auth:health:database_auth",
+                        "diag-db-auth:log:db-auth-rejected",
+                    ],
+                }
+            ]
+            if supported
+            else []
+        ),
+        "unresolved_questions": ["Why was login rejected?"],
+        "historical_context_ids": [],
+    }
+
+
+def test_model_diagnosis_uses_only_current_input_and_preserves_policy_severity():
+    state = _state()
+    state["historical_matches"] = [
+        {
+            "id": "hist-one",
+            "score": 0.8,
+            "historical_incident": {
+                "summary": "Past errors",
+                "confirmed_cause": "Past queue failure",
+                "resolution": "Past queue repair",
+                "provenance": {"type": "synthetic"},
+            },
+        }
+    ]
+    before = deepcopy(state)
+    model = FakeDiagnosisModel([_model_result()])
+    update = build_llm_diagnose_node(model)(state)
+    payload = json.loads(model.requests[0])
+    assert set(payload) == {
+        "incident",
+        "current_evidence",
+        "diagnostic_failures",
+        "investigation_stop_reason",
+        "historical_context",
+    }
+    assert payload["current_evidence"] == state["evidence"]
+    assert payload["historical_context"][0]["confirmed_cause"] == "Past queue failure"
+    assert update["diagnosis"]["status"] == "inconclusive"
+    assert update["diagnosis_source"] == "llm"
+    assert update["diagnosis_model_calls"] == 1
+    assert update["diagnosis_repair_attempted"] is False
+    assert "final_severity" not in update
+    assert state == before
+
+
+def test_supported_model_result_is_restricted_to_policy_confirmed_mechanism():
+    state = _supported_state()
+    candidate = _model_result(supported=True)
+    candidate["hypotheses"][0]["cause"] = (
+        "Credential rotation caused database login rejection."
+    )
+    update = build_llm_diagnose_node(FakeDiagnosisModel([candidate]))(state)
+    assert update["diagnosis"]["status"] == "supported"
+    assert update["diagnosis"]["source"] == "llm"
+    assert update["diagnosis"]["hypotheses"][0]["supporting_evidence_ids"] == [
+        "diag-db-auth:health:database_auth",
+        "diag-db-auth:log:db-auth-rejected",
+    ]
+    assert "rotation" not in update["diagnosis"]["hypotheses"][0]["cause"]
+    assert "Why was login rejected?" in update["diagnosis"]["unresolved_questions"]
+
+
+def test_invalid_output_gets_one_grounded_repair():
+    model = FakeDiagnosisModel([{"status": "supported"}, _model_result()])
+    update = build_llm_diagnose_node(model)(_state())
+    assert update["diagnosis_source"] == "llm"
+    assert update["diagnosis_model_calls"] == 2
+    assert update["diagnosis_repair_attempted"] is True
+    assert "Original input:" in model.requests[1]
+    assert "current_evidence" in model.requests[1]
+
+
+@pytest.mark.parametrize("invalid", ["not json", {"status": "supported"}])
+def test_exhausted_repair_returns_inconclusive_even_with_supported_baseline(invalid):
+    state = _supported_state()
+    model = FakeDiagnosisModel([invalid, invalid])
+    update = build_llm_diagnose_node(model)(state)
+    assert update["diagnosis"]["status"] == "inconclusive"
+    assert update["diagnosis"]["hypotheses"] == []
+    assert update["diagnosis_source"] == "fallback"
+    assert update["diagnosis_failure_reason"] == "invalid_output"
+    assert update["diagnosis_model_calls"] == 2
+
+
+def test_history_as_citation_is_rejected_and_never_becomes_current_evidence():
+    state = _supported_state()
+    state["historical_matches"] = [{"id": "hist-one"}]
+    invalid = _model_result(supported=True)
+    invalid["hypotheses"][0]["supporting_evidence_ids"] = ["hist-one"]
+    update = build_llm_diagnose_node(FakeDiagnosisModel([invalid, invalid]))(state)
+    assert update["diagnosis_source"] == "fallback"
+    assert update["diagnosis"]["status"] == "inconclusive"
+
+
+def test_transient_failure_retries_then_recovers():
+    model = FakeDiagnosisModel(
+        [TemporaryProviderError("rate_limited"), _model_result()]
+    )
+    update = build_llm_diagnose_node(model, sleep=lambda delay: None)(_state())
+    assert update["diagnosis_source"] == "llm"
+    assert update["diagnosis_model_calls"] == 2
+
+
+@pytest.mark.parametrize(
+    ("failure", "reason", "calls"),
+    [
+        (TimeoutError(), "timeout", 3),
+        (ConnectionError(), "provider_unavailable", 3),
+        (TemporaryProviderError("rate_limited"), "rate_limited", 3),
+        (RuntimeError(), "provider_error", 1),
+    ],
+)
+def test_model_failures_fall_back_with_fixed_reason(failure, reason, calls):
+    model = FakeDiagnosisModel([failure] * calls)
+    update = build_llm_diagnose_node(model, sleep=lambda delay: None)(_state())
+    assert update["diagnosis"]["status"] == "inconclusive"
+    assert update["diagnosis_source"] == "fallback"
+    assert update["diagnosis_failure_reason"] == reason
+    assert update["diagnosis_model_calls"] == calls
+
+
+def test_missing_corroboration_rejects_supported_model_claim():
+    state = _supported_state()
+    state["evidence"] = state["evidence"][:1]
+    result = _model_result(supported=True)
+    update = build_llm_diagnose_node(FakeDiagnosisModel([result, result]))(state)
+    assert update["diagnosis_source"] == "fallback"
+    assert update["diagnosis"]["status"] == "inconclusive"
+
+
+def test_contradictory_current_observation_rejects_supported_model_claim():
+    state = _supported_state()
+    state["evidence"].append(
+        {
+            **state["evidence"][0],
+            "id": "diag-db-auth:health:login_recovered",
+            "observation": "healthy: API database login succeeded.",
+        }
+    )
+    candidate = _model_result(supported=True)
+    update = build_llm_diagnose_node(FakeDiagnosisModel([candidate, candidate]))(state)
+    assert update["diagnosis_source"] == "fallback"
     assert update["diagnosis"]["status"] == "inconclusive"

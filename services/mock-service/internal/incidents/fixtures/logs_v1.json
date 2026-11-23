@@ -40,5 +40,13 @@
     "entries": [
       {"id": "db-auth-rejected", "timestamp": "2026-01-01T00:19:42Z", "component": "database", "level": "error", "message": "Database driver could not open an API connection: SQLSTATE 28P01 (invalid_password)."}
     ]
+  },
+  {
+    "incident_id": "diag-db-auth-alt",
+    "service": "api",
+    "observed_at": "2026-01-01T00:25:00Z",
+    "entries": [
+      {"id": "db-login-denied", "timestamp": "2026-01-01T00:24:38Z", "component": "database", "level": "error", "message": "API connection was refused after database authentication error SQLSTATE 28P01 (invalid_password)."}
+    ]
   }
 ]

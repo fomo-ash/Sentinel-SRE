@@ -1,0 +1,461 @@
+{
+  "cases": [
+    {
+      "case_id": "p5-dev-db-auth",
+      "expected_severity": "unknown",
+      "expected_symptoms": [
+        "database_connectivity"
+      ],
+      "expected_status": "supported",
+      "expected_mechanism": "database_authentication_rejection",
+      "label_reason": "The health check and database log explicitly identify the same SQLSTATE 28P01 login rejection. They do not explain why the login was rejected.",
+      "baseline": {
+        "case_id": "p5-dev-db-auth",
+        "thread_id": "phase5-baseline-p5-dev-db-auth",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "baseline",
+        "classification_failure_reason": null,
+        "diagnosis_status": "supported",
+        "diagnosis_source": "deterministic",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "API database connections fail because database login is rejected.",
+        "unresolved_questions": [
+          "Why is the database rejecting the API login?"
+        ],
+        "supporting_evidence_ids": [
+          "diag-db-auth:health:database_auth",
+          "diag-db-auth:log:db-auth-rejected"
+        ],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-db-auth:health:database_auth",
+          "diag-db-auth:log:db-auth-rejected",
+          "diag-db-auth:metric:db_connection_failures"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 12.246,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 0.0,
+        "total_latency_ms": 139.914
+      },
+      "model": {
+        "case_id": "p5-dev-db-auth",
+        "thread_id": "phase5-model-p5-dev-db-auth",
+        "final_severity": "unknown",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "supported",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "API database connections fail because database login is rejected.",
+        "unresolved_questions": [
+          "What read-only observations show when these login rejections began and whether they are ongoing?",
+          "What read-only request or service-impact observations establish whether customers were affected?",
+          "What read-only evidence, if any, identifies why the database rejected the API login?"
+        ],
+        "supporting_evidence_ids": [
+          "diag-db-auth:health:database_auth",
+          "diag-db-auth:log:db-auth-rejected"
+        ],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-db-auth:health:database_auth",
+          "diag-db-auth:log:db-auth-rejected",
+          "diag-db-auth:metric:db_connection_failures"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.986,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 3605.305,
+        "total_latency_ms": 8940.125
+      },
+      "model_history": {
+        "case_id": "p5-dev-db-auth",
+        "thread_id": "phase5-model_history-p5-dev-db-auth",
+        "final_severity": "unknown",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "supported",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "API database connections fail because database login is rejected.",
+        "unresolved_questions": [
+          "What do read-only observations of the API's configured database identity and the database authentication records show about the rejected login attempts?",
+          "What read-only observations establish whether these connection failures affected customer requests?"
+        ],
+        "supporting_evidence_ids": [
+          "diag-db-auth:health:database_auth",
+          "diag-db-auth:log:db-auth-rejected"
+        ],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-db-auth:health:database_auth",
+          "diag-db-auth:log:db-auth-rejected",
+          "diag-db-auth:metric:db_connection_failures"
+        ],
+        "historical_match_ids": [
+          "hist-028",
+          "hist-014",
+          "hist-031"
+        ],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.712,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 4040.216,
+        "total_latency_ms": 8381.55
+      }
+    },
+    {
+      "case_id": "p5-dev-degraded",
+      "expected_severity": "sev2",
+      "expected_symptoms": [
+        "high_latency"
+      ],
+      "expected_status": "inconclusive",
+      "expected_mechanism": null,
+      "label_reason": "Health, metrics, and logs show degraded requests, but no specific cause is established.",
+      "baseline": {
+        "case_id": "p5-dev-degraded",
+        "thread_id": "phase5-baseline-p5-dev-degraded",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "baseline",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "deterministic",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The available diagnostics do not establish a root cause.",
+        "unresolved_questions": [
+          "Which component or dependency caused the observed behavior?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-degraded:health:readiness",
+          "diag-degraded:log:api-error-response",
+          "diag-degraded:log:api-readiness-slow",
+          "diag-degraded:log:api-request-timeout",
+          "diag-degraded:metric:http_error_ratio",
+          "diag-degraded:metric:request_latency_p95_seconds"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 1.296,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 0.0,
+        "total_latency_ms": 60.242
+      },
+      "model": {
+        "case_id": "p5-dev-degraded",
+        "thread_id": "phase5-model-p5-dev-degraded",
+        "final_severity": "unknown",
+        "symptoms": [
+          "high_latency"
+        ],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "Current observations show elevated HTTP errors and request latency, a slow readiness probe, and logged request timeouts and HTTP 5xx responses. These establish degraded API behavior, but do not identify a specific failure mechanism or its cause.",
+        "unresolved_questions": [
+          "What do read-only request traces for the timed-out and 5xx requests show about where the delays or failures occurred?",
+          "What do read-only component and dependency health observations show for the same time window?",
+          "What do read-only breakdowns of the HTTP errors and readiness-check results show about their sources?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-degraded:health:readiness",
+          "diag-degraded:log:api-error-response",
+          "diag-degraded:log:api-readiness-slow",
+          "diag-degraded:log:api-request-timeout",
+          "diag-degraded:metric:http_error_ratio",
+          "diag-degraded:metric:request_latency_p95_seconds"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.907,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 3152.209,
+        "total_latency_ms": 6279.811
+      },
+      "model_history": {
+        "case_id": "p5-dev-degraded",
+        "thread_id": "phase5-model_history-p5-dev-degraded",
+        "final_severity": "unknown",
+        "symptoms": [
+          "high_latency"
+        ],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "Current observations show slow readiness, elevated HTTP errors and request latency, plus logged request timeouts and an HTTP 5xx response. These establish degraded API behavior but do not identify a specific failure mechanism or underlying cause.",
+        "unresolved_questions": [
+          "What do read-only request traces and dependency health observations show for the timed-out and 5xx requests?",
+          "Are there current diagnostic observations that identify resource pressure, dependency errors, or another specific mechanism corresponding to the elevated latency and errors?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-degraded:health:readiness",
+          "diag-degraded:log:api-error-response",
+          "diag-degraded:log:api-readiness-slow",
+          "diag-degraded:log:api-request-timeout",
+          "diag-degraded:metric:http_error_ratio",
+          "diag-degraded:metric:request_latency_p95_seconds"
+        ],
+        "historical_match_ids": [
+          "hist-011",
+          "hist-008",
+          "hist-041"
+        ],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.542,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 3013.756,
+        "total_latency_ms": 6595.852
+      }
+    },
+    {
+      "case_id": "p5-dev-missing",
+      "expected_severity": "unknown",
+      "expected_symptoms": [],
+      "expected_status": "inconclusive",
+      "expected_mechanism": null,
+      "label_reason": "All three diagnostic snapshots are empty or unknown, so no cause can be supported.",
+      "baseline": {
+        "case_id": "p5-dev-missing",
+        "thread_id": "phase5-baseline-p5-dev-missing",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "baseline",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "deterministic",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The available diagnostics do not establish a root cause.",
+        "unresolved_questions": [
+          "Which current diagnostic observations can be collected?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "no_usable_data",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.585,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 0.0,
+        "total_latency_ms": 65.819
+      },
+      "model": {
+        "case_id": "p5-dev-missing",
+        "thread_id": "phase5-model-p5-dev-missing",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The report says a worker alert fired, but there are no current diagnostic observations to establish the alert\u2019s underlying condition or confirm user impact.",
+        "unresolved_questions": [
+          "What do current worker health checks and relevant worker metrics show?",
+          "Are there current worker logs or traces that identify a specific failure mechanism?",
+          "What alert condition and time window triggered the reported worker alert?",
+          "Is there current evidence of user impact, such as affected requests or jobs?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "no_usable_data",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.375,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 2617.842,
+        "total_latency_ms": 6038.251
+      },
+      "model_history": {
+        "case_id": "p5-dev-missing",
+        "thread_id": "phase5-model_history-p5-dev-missing",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The incident report says a worker alert fired, but there are no current_evidence observations to verify the alert\u2019s underlying condition, cause, or user impact. No current failure mechanism is established.",
+        "unresolved_questions": [
+          "What read-only worker health, logs, metrics, or traces are available for this incident, and what do they show?",
+          "What condition triggered the worker alert, and is there read-only evidence of associated failures or user impact?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [],
+        "historical_match_ids": [
+          "hist-052",
+          "hist-045",
+          "hist-056"
+        ],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "no_usable_data",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.782,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 2479.738,
+        "total_latency_ms": 6635.581
+      }
+    }
+  ],
+  "arms": {
+    "baseline": {
+      "count": 3,
+      "severity_accuracy": 0.6666666666666666,
+      "symptom_precision": 0.0,
+      "symptom_recall": 0.0,
+      "diagnosis_status_accuracy": 1.0,
+      "supported_cause_recall": 1.0,
+      "correct_abstention_rate": 1.0,
+      "invalid_citation_count": 0,
+      "unsupported_claim_count": 0,
+      "fallback_rate": 0.0,
+      "accepted_model_diagnosis_rate": 0.0,
+      "classification_fallback_rate": 0.0,
+      "repair_rate": 0.0,
+      "failure_reasons": {},
+      "mean_total_latency_ms": 88.65833333333333,
+      "p95_total_latency_ms": 139.914,
+      "mean_diagnostic_calls": 3,
+      "mean_model_diagnosis_calls": 0,
+      "mismatched_case_ids": [
+        "p5-dev-degraded"
+      ],
+      "classifier_token_usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "calls_with_usage": 0
+      },
+      "diagnoser_token_usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "calls_with_usage": 0
+      }
+    },
+    "model": {
+      "count": 3,
+      "severity_accuracy": 0.6666666666666666,
+      "symptom_precision": 1.0,
+      "symptom_recall": 1.0,
+      "diagnosis_status_accuracy": 1.0,
+      "supported_cause_recall": 1.0,
+      "correct_abstention_rate": 1.0,
+      "invalid_citation_count": 0,
+      "unsupported_claim_count": 0,
+      "fallback_rate": 0.0,
+      "accepted_model_diagnosis_rate": 1.0,
+      "classification_fallback_rate": 0.0,
+      "repair_rate": 0.0,
+      "failure_reasons": {},
+      "mean_total_latency_ms": 7086.062333333333,
+      "p95_total_latency_ms": 8940.125,
+      "mean_diagnostic_calls": 3,
+      "mean_model_diagnosis_calls": 1,
+      "mismatched_case_ids": [
+        "p5-dev-degraded"
+      ],
+      "classifier_token_usage": {
+        "input_tokens": 1096,
+        "output_tokens": 624,
+        "calls_with_usage": 3
+      },
+      "diagnoser_token_usage": {
+        "input_tokens": 5304,
+        "output_tokens": 616,
+        "calls_with_usage": 3
+      }
+    },
+    "model_history": {
+      "count": 3,
+      "severity_accuracy": 0.6666666666666666,
+      "symptom_precision": 1.0,
+      "symptom_recall": 1.0,
+      "diagnosis_status_accuracy": 1.0,
+      "supported_cause_recall": 1.0,
+      "correct_abstention_rate": 1.0,
+      "invalid_citation_count": 0,
+      "unsupported_claim_count": 0,
+      "fallback_rate": 0.0,
+      "accepted_model_diagnosis_rate": 1.0,
+      "classification_fallback_rate": 0.0,
+      "repair_rate": 0.0,
+      "failure_reasons": {},
+      "mean_total_latency_ms": 7204.327666666666,
+      "p95_total_latency_ms": 8381.55,
+      "mean_diagnostic_calls": 3,
+      "mean_model_diagnosis_calls": 1,
+      "mismatched_case_ids": [
+        "p5-dev-degraded"
+      ],
+      "classifier_token_usage": {
+        "input_tokens": 2013,
+        "output_tokens": 867,
+        "calls_with_usage": 3
+      },
+      "diagnoser_token_usage": {
+        "input_tokens": 6204,
+        "output_tokens": 642,
+        "calls_with_usage": 3
+      }
+    }
+  },
+  "run": {
+    "recorded_at_utc": "2026-11-23T16:41:54.495104+00:00",
+    "dataset": "evaluation\\investigation_dev_v1.jsonl",
+    "dataset_sha256": "6835b6aaf2a5de7ef7d9f7ec98315383fa9ed426144dcd6f04d411a40b57f653",
+    "fixture_sha256": {
+      "health": "b1d5c420e418d65d7cad8c0e7193e8c81aa6a490ea7a51d04bad5a40942850c7",
+      "metrics": "3043417d2bdec99838a6b875baab8cdab5979df3f7bf4aef78f7112cca8f5668",
+      "logs": "286c6f35cc4a2cb7d7bf1beb9ef67cb61e1fdf09e20e675fe39afc55291dc836"
+    },
+    "model_id": "gpt-6-luna",
+    "retrieval_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "label_review": "project-authored; no independent reviewer"
+  }
+}

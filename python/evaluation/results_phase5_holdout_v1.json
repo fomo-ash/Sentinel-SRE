@@ -1,0 +1,461 @@
+{
+  "cases": [
+    {
+      "case_id": "p5-holdout-db-auth-alt",
+      "expected_severity": "unknown",
+      "expected_symptoms": [
+        "database_connectivity"
+      ],
+      "expected_status": "supported",
+      "expected_mechanism": "database_authentication_rejection",
+      "label_reason": "An alternate health check and database log explicitly report SQLSTATE 28P01 login rejection; this wording was not used to create the original deterministic rule.",
+      "baseline": {
+        "case_id": "p5-holdout-db-auth-alt",
+        "thread_id": "phase5-baseline-p5-holdout-db-auth-alt",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "baseline",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "deterministic",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The available diagnostics do not establish a root cause.",
+        "unresolved_questions": [
+          "Which component or dependency caused the observed behavior?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-db-auth-alt:health:db_login",
+          "diag-db-auth-alt:log:db-login-denied",
+          "diag-db-auth-alt:metric:db_connection_failures"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 2.16,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 0.0,
+        "total_latency_ms": 23.303
+      },
+      "model": {
+        "case_id": "p5-holdout-db-auth-alt",
+        "thread_id": "phase5-model-p5-holdout-db-auth-alt",
+        "final_severity": "unknown",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "fallback",
+        "diagnosis_failure_reason": "invalid_output",
+        "diagnosis_summary": "Model diagnosis failed; current diagnostics do not establish a cause.",
+        "unresolved_questions": [
+          "Which component or dependency caused the observed behavior?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-db-auth-alt:health:db_login",
+          "diag-db-auth-alt:log:db-login-denied",
+          "diag-db-auth-alt:metric:db_connection_failures"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.217,
+        "diagnosis_model_calls": 2,
+        "diagnosis_repair_attempted": true,
+        "diagnosis_latency_ms": 8797.332,
+        "total_latency_ms": 12773.104
+      },
+      "model_history": {
+        "case_id": "p5-holdout-db-auth-alt",
+        "thread_id": "phase5-model_history-p5-holdout-db-auth-alt",
+        "final_severity": "unknown",
+        "symptoms": [
+          "database_connectivity"
+        ],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "fallback",
+        "diagnosis_failure_reason": "invalid_output",
+        "diagnosis_summary": "Model diagnosis failed; current diagnostics do not establish a cause.",
+        "unresolved_questions": [
+          "Which component or dependency caused the observed behavior?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-db-auth-alt:health:db_login",
+          "diag-db-auth-alt:log:db-login-denied",
+          "diag-db-auth-alt:metric:db_connection_failures"
+        ],
+        "historical_match_ids": [
+          "hist-014",
+          "hist-081",
+          "hist-101"
+        ],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.212,
+        "diagnosis_model_calls": 2,
+        "diagnosis_repair_attempted": true,
+        "diagnosis_latency_ms": 8790.432,
+        "total_latency_ms": 12611.108
+      }
+    },
+    {
+      "case_id": "p5-holdout-worker",
+      "expected_severity": "unknown",
+      "expected_symptoms": [],
+      "expected_status": "inconclusive",
+      "expected_mechanism": null,
+      "label_reason": "Readiness failure and queue growth are correlated symptoms without an established failure mechanism.",
+      "baseline": {
+        "case_id": "p5-holdout-worker",
+        "thread_id": "phase5-baseline-p5-holdout-worker",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "baseline",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "deterministic",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The available diagnostics do not establish a root cause.",
+        "unresolved_questions": [
+          "Which component or dependency caused the observed behavior?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-unhealthy:health:readiness",
+          "diag-unhealthy:log:worker-queue-growing",
+          "diag-unhealthy:log:worker-readiness-failed",
+          "diag-unhealthy:metric:worker_queue_depth"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.179,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 0.0,
+        "total_latency_ms": 10.261
+      },
+      "model": {
+        "case_id": "p5-holdout-worker",
+        "thread_id": "phase5-model-p5-holdout-worker",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The health check and log both report a failed worker readiness check, and the metric and log report a queue depth of 230 items over 5 minutes with growth during the fixture window. These observations establish symptoms but do not identify why readiness failed or the queue grew; user impact is unknown.",
+        "unresolved_questions": [
+          "What specific readiness-check condition failed, according to a read-only breakdown of the check?",
+          "What do read-only worker process and dependency health observations show for the same period?",
+          "What do read-only queue processing and arrival-rate observations show during the fixture window?",
+          "What, if any, user impact is confirmed by current read-only observations?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-unhealthy:health:readiness",
+          "diag-unhealthy:log:worker-queue-growing",
+          "diag-unhealthy:log:worker-readiness-failed",
+          "diag-unhealthy:metric:worker_queue_depth"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.252,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 6138.864,
+        "total_latency_ms": 10157.243
+      },
+      "model_history": {
+        "case_id": "p5-holdout-worker",
+        "thread_id": "phase5-model_history-p5-holdout-worker",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "Current observations confirm that the worker readiness check failed and that queue depth was 230 items over 5 minutes, with a log reporting an increase during the fixture window. These are symptoms; they do not establish why readiness failed or the queue grew, or the extent of user impact.",
+        "unresolved_questions": [
+          "What do read-only worker diagnostics show about the specific reason the readiness check failed?",
+          "What do read-only queue and job-level observations show about which work is queued and whether jobs are progressing or failing?",
+          "What current observations establish whether users or requests were affected? "
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-unhealthy:health:readiness",
+          "diag-unhealthy:log:worker-queue-growing",
+          "diag-unhealthy:log:worker-readiness-failed",
+          "diag-unhealthy:metric:worker_queue_depth"
+        ],
+        "historical_match_ids": [
+          "hist-001",
+          "hist-052",
+          "hist-073"
+        ],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.195,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 4091.092,
+        "total_latency_ms": 9830.262
+      }
+    },
+    {
+      "case_id": "p5-holdout-healthy",
+      "expected_severity": "unknown",
+      "expected_symptoms": [],
+      "expected_status": "inconclusive",
+      "expected_mechanism": null,
+      "label_reason": "The fixed observations are healthy; an alert report alone cannot establish a cause.",
+      "baseline": {
+        "case_id": "p5-holdout-healthy",
+        "thread_id": "phase5-baseline-p5-holdout-healthy",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "baseline",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "deterministic",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The available diagnostics do not establish a root cause.",
+        "unresolved_questions": [
+          "Which component or dependency caused the observed behavior?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-healthy:health:readiness",
+          "diag-healthy:log:api-readiness-passed",
+          "diag-healthy:log:api-requests-served",
+          "diag-healthy:metric:http_error_ratio",
+          "diag-healthy:metric:request_latency_p95_seconds"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.17,
+        "diagnosis_model_calls": 0,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 0.0,
+        "total_latency_ms": 9.941
+      },
+      "model": {
+        "case_id": "p5-holdout-healthy",
+        "thread_id": "phase5-model-p5-holdout-healthy",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The current observations show a passed readiness probe, a 0.002 HTTP error ratio and 0.08-second p95 latency over five minutes, and logs reporting successful readiness and requests within the expected latency range. They do not establish why the reported alert fired or whether users were affected; these observations alone do not prove there was no impact.",
+        "unresolved_questions": [
+          "What alert condition and time window triggered the API alert, and which observed metric or threshold caused it?",
+          "Are there read-only request or error breakdowns for the alert period that establish whether users were affected?",
+          "How do the relevant metrics compare with their expected baselines and alert thresholds?"
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-healthy:health:readiness",
+          "diag-healthy:log:api-readiness-passed",
+          "diag-healthy:log:api-requests-served",
+          "diag-healthy:metric:http_error_ratio",
+          "diag-healthy:metric:request_latency_p95_seconds"
+        ],
+        "historical_match_ids": [],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.189,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 3375.657,
+        "total_latency_ms": 7558.565
+      },
+      "model_history": {
+        "case_id": "p5-holdout-healthy",
+        "thread_id": "phase5-model_history-p5-holdout-healthy",
+        "final_severity": "unknown",
+        "symptoms": [],
+        "classification_source": "llm",
+        "classification_failure_reason": null,
+        "diagnosis_status": "inconclusive",
+        "diagnosis_source": "llm",
+        "diagnosis_failure_reason": null,
+        "diagnosis_summary": "The supplied API observations show a passed readiness probe, an HTTP error ratio of 0.002 and p95 latency of 0.08 seconds over 5 minutes, with logs reporting successful readiness and expected request latency. They do not establish why the alert fired or whether users were affected; no alert rule or evaluation details are provided.",
+        "unresolved_questions": [
+          "What alert condition, threshold, and evaluation window caused the API alert to fire?",
+          "What do read-only observations of the alert evaluation and its underlying metric series show for the alert time window?",
+          "Is there read-only request or impact evidence for the affected time window? "
+        ],
+        "supporting_evidence_ids": [],
+        "citations_valid": true,
+        "current_evidence_ids": [
+          "diag-healthy:health:readiness",
+          "diag-healthy:log:api-readiness-passed",
+          "diag-healthy:log:api-requests-served",
+          "diag-healthy:metric:http_error_ratio",
+          "diag-healthy:metric:request_latency_p95_seconds"
+        ],
+        "historical_match_ids": [
+          "hist-056",
+          "hist-040",
+          "hist-052"
+        ],
+        "retrieval_failure_reason": null,
+        "investigation_stop_reason": "checks_complete",
+        "tool_call_count": 3,
+        "diagnostic_latency_ms": 0.195,
+        "diagnosis_model_calls": 1,
+        "diagnosis_repair_attempted": false,
+        "diagnosis_latency_ms": 4199.919,
+        "total_latency_ms": 7483.834
+      }
+    }
+  ],
+  "arms": {
+    "baseline": {
+      "count": 3,
+      "severity_accuracy": 1.0,
+      "symptom_precision": 0.0,
+      "symptom_recall": 0.0,
+      "diagnosis_status_accuracy": 0.6666666666666666,
+      "supported_cause_recall": 0.0,
+      "correct_abstention_rate": 1.0,
+      "invalid_citation_count": 0,
+      "unsupported_claim_count": 0,
+      "fallback_rate": 0.0,
+      "accepted_model_diagnosis_rate": 0.0,
+      "classification_fallback_rate": 0.0,
+      "repair_rate": 0.0,
+      "failure_reasons": {},
+      "mean_total_latency_ms": 14.501666666666667,
+      "p95_total_latency_ms": 23.303,
+      "mean_diagnostic_calls": 3,
+      "mean_model_diagnosis_calls": 0,
+      "mismatched_case_ids": [
+        "p5-holdout-db-auth-alt"
+      ],
+      "classifier_token_usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "calls_with_usage": 0
+      },
+      "diagnoser_token_usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "calls_with_usage": 0
+      }
+    },
+    "model": {
+      "count": 3,
+      "severity_accuracy": 1.0,
+      "symptom_precision": 1.0,
+      "symptom_recall": 1.0,
+      "diagnosis_status_accuracy": 0.6666666666666666,
+      "supported_cause_recall": 0.0,
+      "correct_abstention_rate": 1.0,
+      "invalid_citation_count": 0,
+      "unsupported_claim_count": 0,
+      "fallback_rate": 0.3333333333333333,
+      "accepted_model_diagnosis_rate": 0.6666666666666666,
+      "classification_fallback_rate": 0.0,
+      "repair_rate": 0.3333333333333333,
+      "failure_reasons": {
+        "invalid_output": 1
+      },
+      "mean_total_latency_ms": 10162.970666666666,
+      "p95_total_latency_ms": 12773.104,
+      "mean_diagnostic_calls": 3,
+      "mean_model_diagnosis_calls": 1.3333333333333333,
+      "mismatched_case_ids": [
+        "p5-holdout-db-auth-alt"
+      ],
+      "classifier_token_usage": {
+        "input_tokens": 1102,
+        "output_tokens": 877,
+        "calls_with_usage": 3
+      },
+      "diagnoser_token_usage": {
+        "input_tokens": 7784,
+        "output_tokens": 1365,
+        "calls_with_usage": 4
+      }
+    },
+    "model_history": {
+      "count": 3,
+      "severity_accuracy": 1.0,
+      "symptom_precision": 1.0,
+      "symptom_recall": 1.0,
+      "diagnosis_status_accuracy": 0.6666666666666666,
+      "supported_cause_recall": 0.0,
+      "correct_abstention_rate": 1.0,
+      "invalid_citation_count": 0,
+      "unsupported_claim_count": 0,
+      "fallback_rate": 0.3333333333333333,
+      "accepted_model_diagnosis_rate": 0.6666666666666666,
+      "classification_fallback_rate": 0.0,
+      "repair_rate": 0.3333333333333333,
+      "failure_reasons": {
+        "invalid_output": 1
+      },
+      "mean_total_latency_ms": 9975.068,
+      "p95_total_latency_ms": 12611.108,
+      "mean_diagnostic_calls": 3,
+      "mean_model_diagnosis_calls": 1.3333333333333333,
+      "mismatched_case_ids": [
+        "p5-holdout-db-auth-alt"
+      ],
+      "classifier_token_usage": {
+        "input_tokens": 2062,
+        "output_tokens": 956,
+        "calls_with_usage": 3
+      },
+      "diagnoser_token_usage": {
+        "input_tokens": 9025,
+        "output_tokens": 1165,
+        "calls_with_usage": 4
+      }
+    }
+  },
+  "run": {
+    "recorded_at_utc": "2026-11-23T16:50:10.946687+00:00",
+    "dataset": "evaluation\\investigation_holdout_v1.jsonl",
+    "dataset_sha256": "60ee9cd6c150b048a712998512c12978cf963fc2b57d301d4bb259cf305e73eb",
+    "fixture_sha256": {
+      "health": "b1d5c420e418d65d7cad8c0e7193e8c81aa6a490ea7a51d04bad5a40942850c7",
+      "metrics": "3043417d2bdec99838a6b875baab8cdab5979df3f7bf4aef78f7112cca8f5668",
+      "logs": "286c6f35cc4a2cb7d7bf1beb9ef67cb61e1fdf09e20e675fe39afc55291dc836"
+    },
+    "model_id": "gpt-6-luna",
+    "retrieval_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "label_review": "project-authored; no independent reviewer"
+  }
+}

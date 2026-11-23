@@ -94,6 +94,17 @@ class Diagnosis(TypedDict):
     source: DiagnosisSource
 
 
+@with_config(ConfigDict(extra="forbid"))
+class ModelDiagnosis(TypedDict):
+    """Model-owned fields; the workflow sets provenance and severity."""
+
+    status: DiagnosisStatus
+    summary: str
+    hypotheses: list[DiagnosisHypothesis]
+    unresolved_questions: list[str]
+    historical_context_ids: list[str]
+
+
 class classifySchema(TypedDict):
     """Structured interpretation returned by a future classifier model."""
 
@@ -134,6 +145,9 @@ class InvestigationState(TypedDict):
     diagnosis: NotRequired[Diagnosis | None]
     diagnosis_source: NotRequired[DiagnosisSource | None]
     diagnosis_failure_reason: NotRequired[DiagnosisFailure | None]
+    diagnosis_model_calls: NotRequired[int]
+    diagnosis_repair_attempted: NotRequired[bool]
+    diagnosis_latency_ms: NotRequired[float]
     historical_matches: NotRequired[list[dict]]
     retrieval_failure_reason: NotRequired[RetrievalFailure | None]
 

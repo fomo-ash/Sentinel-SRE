@@ -33,5 +33,12 @@
     "observed_at": "2026-01-01T00:20:00Z",
     "status": "unhealthy",
     "checks": [{"id": "database_auth", "status": "unhealthy", "detail": "API database login failed with SQLSTATE 28P01 (invalid_password)."}]
+  },
+  {
+    "incident_id": "diag-db-auth-alt",
+    "service": "api",
+    "observed_at": "2026-01-01T00:25:00Z",
+    "status": "unhealthy",
+    "checks": [{"id": "db_login", "status": "unhealthy", "detail": "Database rejected the API login with SQLSTATE 28P01 (invalid_password)."}]
   }
 ]
