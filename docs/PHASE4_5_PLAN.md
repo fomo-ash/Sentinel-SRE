@@ -1,6 +1,6 @@
 # Phase 4 and Phase 5 implementation plan
 
-Status: **Phase 4 accepted; Phase 5 partially implemented**, written 2026-11-02 and updated 2026-11-23. Phases 0–3 are implemented. The Phase 4 loopback reads, Python diagnostic client, and opt-in bounded graph loop passed the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md). Phase 5 has a structured diagnosis contract and one narrow supported database authentication failure rule after every opt-in simulated investigation. Model diagnosis and comparative evaluation remain planned. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
+Status: **Phase 4 accepted; Phase 5 partially implemented**, written 2026-11-02 and updated 2026-11-23. Phases 0–3 are implemented. The Phase 4 loopback reads, Python diagnostic client, and opt-in bounded graph loop passed the [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md). Phase 5 has a structured diagnosis contract, one narrow supported database authentication failure rule, and an optional provider adapter with a grounded prompt. The model diagnosis graph node and comparative evaluation remain planned. This plan turns the [roadmap](ROADMAP.md) into reviewable work and acceptance checks. If implementation changes a contract below, record the reason in [DECISIONS.md](DECISIONS.md) and update the roadmap and tests in the same change.
 
 ## Existing boundary to preserve
 
@@ -166,10 +166,11 @@ If historical IDs are present, they appear only in `historical_context_ids`. A s
 | File | Edit or add | Expected responsibility |
 | --- | --- | --- |
 | `python/src/sentinel/schemas.py` | Implemented for Phase 5 contract | Separate diagnosis output contract, typed state result, source/failure enums, and current-evidence reference validation. Cause inference remains in the planned diagnosis node. |
-| `python/src/sentinel/nodes/diagnose.py` | Partially implemented | Deterministic baseline validates an abstaining result or supports explicit database login rejection using current health and log observations. An injected model, grounded prompt, repair/retry, and comparative evaluation remain pending. |
-| `python/src/sentinel/openai_diagnoser.py` | Add if live provider comparison is run | Optional LangChain/OpenAI adapter using existing environment conventions; no provider initialization on the default route. |
+| `python/src/sentinel/nodes/diagnose.py` | Partially implemented | Deterministic baseline validates an abstaining result or supports explicit database login rejection using current health and log observations. An injected model node, repair/retry, and comparative evaluation remain pending. |
+| `python/src/sentinel/openai_diagnoser.py` | Implemented, not wired | Optional LangChain/OpenAI structured-output adapter with a detailed evidence-grounded prompt, fixed provider errors, usage accounting, and no provider initialization on the default route. The model node still needs repair/retry and citation validation. |
+| `python/tests/test_openai_diagnoser.py` | Implemented | Fake structured client verifies prompt boundaries, optional factory configuration, usage accounting, refusal pass-through, and fixed provider error categories without network calls. |
 | `python/src/sentinel/graph.py` | Implemented for deterministic baseline | Route Phase 4's `finish_investigation` handoff to deterministic diagnosis; leave the classification-only default unchanged. Model diagnosis routing remains pending. |
-| `python/tests/test_diagnose.py` | Add | Supported and inconclusive results, evidence citation validation, history-as-evidence rejection, cross-incident IDs, malformed output repair, timeout, and fallback. |
+| `python/tests/test_diagnose.py` | Partially implemented | Deterministic supported and inconclusive results are covered; add model output repair, timeout, and fallback tests when the model node is wired. |
 | `python/tests/test_graph.py` | Edit | Check diagnosis path, checkpointed references, unchanged severity, no-diagnostics abstention, and all terminal routes. |
 | `services/mock-service/internal/incidents/fixtures/` | Extend carefully | Add current observations for evaluation cases without storing diagnosis labels or expected causes in the service. |
 | `python/evaluation/investigation_dev_v1.jsonl` | Add | Small implementation set with incident input, fixture ID, hidden cause/abstention labels, expected evidence IDs, and label rationale. |
