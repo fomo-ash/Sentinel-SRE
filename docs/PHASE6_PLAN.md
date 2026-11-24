@@ -1,11 +1,11 @@
 # Phase 6 implementation plan: human approval and simulated remediation
 
-Status: **Task 1 implemented; Tasks 2–8 planned**. Phase 6 must remain opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior until the later Phase 6 tasks are implemented. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
+Status: **Tasks 1–2 implemented; Tasks 3–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
 
 ## Task checklist
 
 - [x] 1. Define the remediation state and validation contract.
-- [ ] 2. Produce one deterministic, evidence-bound proposal.
+- [x] 2. Produce one deterministic, evidence-bound proposal.
 - [ ] 3. Add a checkpointed human approval handoff.
 - [ ] 4. Add the local mock action and idempotency ledger.
 - [ ] 5. Build a narrow Python action client.
@@ -39,12 +39,13 @@ Use the existing `InMemorySaver` for the checkpointed interrupt. A pending appro
 - **Done when:** state can represent `no_action`, `awaiting_approval`, `rejected`, `approved`, `execution_failed`, `execution_unknown`, `verification_failed`, `verification_unknown`, and `verified` without interpreting missing fields as approval. No raw exception or credential enters the checkpoint.
 - **Implemented:** `schemas.py` now holds bounded strict proposal, decision, receipt, verification, and report types with cross-record validators. `receive_incident` clears the new fields on every run, including a reused checkpoint thread. This contract does not propose or execute an action.
 
-### 2. Produce one deterministic, evidence-bound proposal
+### 2. Produce one deterministic, evidence-bound proposal (implemented)
 
 - **Files:** `python/src/sentinel/nodes/propose_remediation.py`, `python/src/sentinel/graph.py`.
 - Add a pure node on the opt-in Phase 6 route after either diagnosis route. Check the actual diagnosis status and required current evidence references, then choose the single action from a hard-coded allowlist. Build a stable proposal fingerprint from the incident, service, action, and sorted evidence IDs; store the human-readable rationale separately. Never read an action from model text, historical matches, or the caller's initial state.
 - When policy cannot support the action, set an explicit `no_action` outcome and reason, then route directly to reporting. Keep `final_severity` unchanged.
 - **Done when:** the supported `diag-db-auth` case yields one exact proposal; healthy, missing, alternate, rejected-policy, and inconclusive cases yield none. Proposal creation makes zero mutation calls.
+- **Implemented:** `remediation_mode="proposal"` is available only with `investigation_mode="simulated"`. After either diagnosis route, the pure node applies the same narrow database login rejection policy, requires complete diagnostics without read failures, and checkpoints a proposal or a fixed `no_action_reason`. Its SHA-256 fingerprint binds the incident, action, and exact current evidence records. This stage ends at `END` after the proposal or abstention; Task 3 adds the interrupt and Task 7 adds reporting. The omitted or `off` mode leaves the existing route unchanged.
 
 ### 3. Add a checkpointed human approval handoff
 
@@ -90,7 +91,7 @@ Use the existing `InMemorySaver` for the checkpointed interrupt. A pending appro
 
 ## Test files — separate from the eight implementation tasks
 
-The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; the remaining files are for later tasks.
+The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`. The remaining files are for later tasks.
 
 | Test file | Required coverage |
 | --- | --- |

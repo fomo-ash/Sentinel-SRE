@@ -16,6 +16,7 @@ from sentinel.nodes.diagnose import (
 from sentinel.nodes.evaluate import evaluate_evidence
 from sentinel.nodes.investigate import DIAGNOSTIC_PLAN, plan_diagnostics, run_diagnostic
 from sentinel.nodes.llm_classify import ClassificationModel, build_llm_classify_node
+from sentinel.nodes.propose_remediation import propose_remediation
 from sentinel.nodes.severity_policy import severity_policy
 from sentinel.schemas import InvestigationState, validate_incident
 from sentinel.tools.diagnostics import DiagnosticClient, validate_diagnostic_request
@@ -56,6 +57,7 @@ def receive_incident(state: InvestigationState) -> dict:
         "historical_matches": [],
         "retrieval_failure_reason": None,
         "action_proposal": None,
+        "no_action_reason": None,
         "approval_decision": None,
         "execution_receipt": None,
         "execution_failure_reason": None,
@@ -122,7 +124,10 @@ def route_investigation(
 ) -> str:
     """Require an explicit opt-in and a synthetic incident before any read."""
     mode = config.get("configurable", {}).get("investigation_mode", "off")
+    remediation_mode = route_remediation_mode(config)
     if mode == "off":
+        if remediation_mode != "off":
+            raise ValueError("Remediation proposal requires simulated investigation")
         return "off"
     if mode != "simulated":
         raise ValueError(f"Unsupported investigation mode: {mode}")
@@ -159,6 +164,20 @@ def route_diagnosis(state: InvestigationState, config: RunnableConfig) -> str:
     if mode in ("deterministic", "llm"):
         return mode
     raise ValueError(f"Unsupported diagnosis mode: {mode}")
+
+
+def route_remediation_mode(config: RunnableConfig) -> str:
+    """Phase 6 currently exposes proposal inspection without approval or effects."""
+    mode = config.get("configurable", {}).get("remediation_mode", "off")
+    if mode in ("off", "proposal"):
+        return mode
+    raise ValueError(f"Unsupported remediation mode: {mode}")
+
+
+def route_remediation_proposal(
+    state: InvestigationState, config: RunnableConfig
+) -> str:
+    return route_remediation_mode(config)
 
 
 def build_graph(
@@ -281,6 +300,7 @@ def build_graph(
     workflow.add_node("finish_investigation", finish_investigation)
     workflow.add_node("diagnose_baseline", diagnose_baseline)
     workflow.add_node("llm_diagnose", llm_diagnose_node)
+    workflow.add_node("propose_remediation", propose_remediation)
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -318,6 +338,11 @@ def build_graph(
         route_diagnosis,
         {"deterministic": "diagnose_baseline", "llm": "llm_diagnose"},
     )
-    workflow.add_edge("diagnose_baseline", END)
-    workflow.add_edge("llm_diagnose", END)
+    for diagnosis_node in ("diagnose_baseline", "llm_diagnose"):
+        workflow.add_conditional_edges(
+            diagnosis_node,
+            route_remediation_proposal,
+            {"off": END, "proposal": "propose_remediation"},
+        )
+    workflow.add_edge("propose_remediation", END)
     return workflow.compile(checkpointer=InMemorySaver())

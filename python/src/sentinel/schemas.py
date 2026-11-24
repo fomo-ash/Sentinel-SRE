@@ -44,6 +44,12 @@ InvestigationStopReason = Literal[
     "no_usable_data",
 ]
 RemediationAction = Literal["restore_simulated_db_login"]
+NoActionReason = Literal[
+    "ineligible_incident",
+    "incomplete_diagnostics",
+    "unsupported_diagnosis",
+    "unsupported_evidence",
+]
 RemediationOutcome = Literal[
     "no_action",
     "awaiting_approval",
@@ -236,6 +242,7 @@ class InvestigationState(TypedDict):
     historical_matches: NotRequired[list[dict]]
     retrieval_failure_reason: NotRequired[RetrievalFailure | None]
     action_proposal: NotRequired[ActionProposal | None]
+    no_action_reason: NotRequired[NoActionReason | None]
     approval_decision: NotRequired[ApprovalDecision | None]
     execution_receipt: NotRequired[ExecutionReceipt | None]
     execution_failure_reason: NotRequired[ExecutionFailure | None]
