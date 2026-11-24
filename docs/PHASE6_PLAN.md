@@ -1,6 +1,6 @@
 # Phase 6 implementation plan: human approval and simulated remediation
 
-Status: **Tasks 1–4 implemented; Tasks 5–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
+Status: **Tasks 1–5 implemented; Tasks 6–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
 
 ## Task checklist
 
@@ -8,7 +8,7 @@ Status: **Tasks 1–4 implemented; Tasks 5–8 planned**. Phase 6 remains opt-in
 - [x] 2. Produce one deterministic, evidence-bound proposal.
 - [x] 3. Add a checkpointed human approval handoff.
 - [x] 4. Add the local mock action and idempotency ledger.
-- [ ] 5. Build a narrow Python action client.
+- [x] 5. Build a narrow Python action client.
 - [ ] 6. Execute only after recorded approval.
 - [ ] 7. Verify the effect and produce a truthful report.
 - [ ] 8. Expose the safe operator flow and record the review.
@@ -84,12 +84,13 @@ Here `config` is the exact `thread_id`, `investigation_mode="simulated"`, and `r
 - **Done when:** pre-action reads still expose the original fixture, one valid action changes only the intended synthetic health observation, repeated requests do not duplicate the effect, and a server restart resets this in-memory simulation.
 - **Implemented:** the Go store atomically records a receipt, consumes one approval reference, and overlays only `diag-db-auth` health. The HTTP handler validates a complete approve decision bound to the proposal, rejects malformed or unsupported requests, and exposes a read-only receipt lookup. Exact action-ID replay returns the original receipt; changed requests or reused approvals conflict. A fresh store has the original fixture. Go store, HTTP, and race-detector tests pass. This endpoint is not called by the Python workflow yet; Tasks 5–6 add the client and execution node.
 
-### 5. Build a narrow Python action client
+### 5. Build a narrow Python action client (implemented)
 
 - **Files:** `python/src/sentinel/tools/remediation.py`, `python/src/sentinel/config.py`.
 - Define an injected client protocol with `execute(proposal, approval, action_id)` and `get_receipt(action_id)`. Implement a loopback-only HTTP adapter that checks synthetic IDs, exact action names, response schema, incident/service identity, fingerprint, and receipt identity. Translate HTTP and transport failures into fixed categories without storing raw error strings in graph state.
 - Use one HTTP mutation request per invocation. Do not automatically retry a timed-out POST. On an ambiguous result, query the receipt by the same action ID; if still unknown, stop with `execution_unknown` for human review. This preserves at-most-once intent across graph replay and lost responses.
 - **Done when:** fake and local HTTP clients share the same contract, default graph construction needs no action client, and arbitrary hosts or paths cannot be selected by incident or model text.
+- **Implemented:** `HTTPRemediationClient` is bound to `diag-db-auth` and accepts only the one allowlisted action, matching evidence IDs, an explicit recorded approve decision, a synthetic action ID, and a literal loopback HTTP origin. It serializes the Go request, validates a returned receipt against the action and approval, and exposes `get_receipt(action_id)` through the injected protocol. Direct receipt lookup validates shape, action ID, incident, service, and action; Task 6 must also bind any looked-up receipt to its checkpointed proposal and decision. A POST is sent once; timeout, connection loss, server error, or an invalid success receipt triggers one read-only receipt lookup. If that cannot prove the exact action was applied, the client raises fixed `execution_unknown`. Fake-transport tests cover the failure paths. The graph still has no route to this client; Task 6 adds that route and must revalidate the checkpointed approval before calling it.
 
 ### 6. Execute only after recorded approval
 
@@ -114,7 +115,7 @@ Here `config` is the exact `thread_id`, `investigation_mode="simulated"`, and `r
 
 ## Test files — separate from the eight implementation tasks
 
-The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`; Task 4 added the two Go remediation test files and extended `diagnostics_test.go`. The remaining files are for later tasks.
+The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`; Task 4 added the two Go remediation test files and extended `diagnostics_test.go`; Task 5 added `test_remediation.py`. The remaining files are for later tasks.
 
 | Test file | Required coverage |
 | --- | --- |
