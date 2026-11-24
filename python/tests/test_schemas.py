@@ -6,8 +6,13 @@ from pydantic import TypeAdapter, ValidationError
 from sentinel.schemas import (
     InvestigationState,
     classifySchema,
+    validate_action_proposal,
+    validate_approval_decision,
     validate_diagnosis,
+    validate_execution_receipt,
     validate_incident,
+    validate_remediation_report,
+    validate_verification_result,
 )
 
 
@@ -240,3 +245,148 @@ def test_diagnosis_rejects_bad_shape_and_duplicate_current_evidence_ids():
     state["evidence"].append(deepcopy(state["evidence"][0]))
     with pytest.raises(ValueError, match="must be unique"):
         validate_diagnosis(_supported_diagnosis(), state)
+
+
+def _remediation_contract():
+    state = _diagnosis_state()
+    state["final_severity"] = "unknown"
+    state["diagnosis"] = _supported_diagnosis()
+    proposal = {
+        "proposal_id": "proposal-one",
+        "incident_id": "diag-one",
+        "service": "api",
+        "action": "restore_simulated_db_login",
+        "reason": "Current health and log observations show login rejection.",
+        "current_evidence_ids": ["diag-one:health:ready"],
+        "fingerprint": "a" * 64,
+    }
+    decision = {
+        "decision_id": "decision-one",
+        "proposal_id": "proposal-one",
+        "proposal_fingerprint": "a" * 64,
+        "incident_id": "diag-one",
+        "service": "api",
+        "decision": "approve",
+        "operator_id": "operator-one",
+        "decided_at": "2026-01-01T00:01:00Z",
+    }
+    receipt = {
+        "action_id": "action-one",
+        "incident_id": "diag-one",
+        "service": "api",
+        "action": "restore_simulated_db_login",
+        "proposal_fingerprint": "a" * 64,
+        "approval_reference": "decision-one",
+        "status": "applied",
+        "applied_at": "2026-01-01T00:02:00Z",
+    }
+    return state, proposal, decision, receipt
+
+
+def test_phase6_contract_accepts_matching_current_records():
+    state, proposal, decision, receipt = _remediation_contract()
+    assert validate_action_proposal(proposal, state) == proposal
+    assert validate_approval_decision(decision, proposal, state) == decision
+    assert validate_execution_receipt(receipt, proposal, decision) == receipt
+    verification = {
+        "action_id": "action-one",
+        "incident_id": "diag-one",
+        "service": "api",
+        "status": "verified",
+        "observation_id": "restored-login",
+        "observed_at": "2026-01-01T00:03:00Z",
+        "failure_reason": None,
+    }
+    assert validate_verification_result(verification, receipt) == verification
+    state["action_proposal"] = proposal
+    state["approval_decision"] = decision
+    state["execution_receipt"] = receipt
+    state["verification_result"] = verification
+    report = {
+        "incident_id": "diag-one",
+        "service": "api",
+        "outcome": "verified",
+        "final_severity": "unknown",
+        "diagnosis_status": "supported",
+        "summary": "The synthetic action was verified by a fresh observation.",
+        "proposal_id": "proposal-one",
+        "decision_id": "decision-one",
+        "action_id": "action-one",
+        "verification_status": "verified",
+        "follow_up": [],
+    }
+    assert validate_remediation_report(report, state) == report
+
+
+def test_phase6_proposal_rejects_non_current_evidence_and_unknown_fields():
+    state, proposal, _, _ = _remediation_contract()
+    proposal["current_evidence_ids"] = ["diag-other:log:failure"]
+    with pytest.raises(ValueError, match="non-current evidence"):
+        validate_action_proposal(proposal, state)
+    proposal["current_evidence_ids"] = ["diag-one:health:ready"]
+    proposal["command"] = "restart production"
+    with pytest.raises(ValidationError, match="command"):
+        validate_action_proposal(proposal, state)
+
+
+def test_phase6_decision_requires_exact_proposal_and_operator():
+    state, proposal, decision, _ = _remediation_contract()
+    decision["proposal_fingerprint"] = "b" * 64
+    with pytest.raises(ValueError, match="pending proposal"):
+        validate_approval_decision(decision, proposal, state)
+    decision["proposal_fingerprint"] = "a" * 64
+    decision["operator_id"] = "  "
+    with pytest.raises(ValueError, match="operator_id"):
+        validate_approval_decision(decision, proposal, state)
+    decision["operator_id"] = "operator-one"
+    decision["decided_at"] = "2026-01-01T00:01:00"
+    with pytest.raises(ValueError, match="timezone-aware"):
+        validate_approval_decision(decision, proposal, state)
+
+
+def test_phase6_receipt_requires_approval_and_matching_action():
+    _, proposal, decision, receipt = _remediation_contract()
+    decision["decision"] = "reject"
+    with pytest.raises(ValueError, match="approved decision"):
+        validate_execution_receipt(receipt, proposal, decision)
+    decision["decision"] = "approve"
+    receipt["approval_reference"] = "another-decision"
+    with pytest.raises(ValueError, match="approved proposal"):
+        validate_execution_receipt(receipt, proposal, decision)
+    receipt["approval_reference"] = "decision-one"
+    receipt["action"] = "arbitrary_command"
+    with pytest.raises(ValidationError, match="action"):
+        validate_execution_receipt(receipt, proposal, decision)
+
+
+def test_phase6_verification_and_report_cannot_claim_unobserved_success():
+    state, proposal, decision, receipt = _remediation_contract()
+    verification = {
+        "action_id": "action-one",
+        "incident_id": "diag-one",
+        "service": "api",
+        "status": "verified",
+        "observation_id": "restored-login",
+        "observed_at": "2026-01-01T00:01:00Z",
+        "failure_reason": None,
+    }
+    with pytest.raises(ValueError, match="predates action"):
+        validate_verification_result(verification, receipt)
+    state["action_proposal"] = proposal
+    state["approval_decision"] = decision
+    state["execution_receipt"] = receipt
+    report = {
+        "incident_id": "diag-one",
+        "service": "api",
+        "outcome": "verified",
+        "final_severity": "unknown",
+        "diagnosis_status": "supported",
+        "summary": "Resolved.",
+        "proposal_id": "proposal-one",
+        "decision_id": "decision-one",
+        "action_id": "action-one",
+        "verification_status": "verified",
+        "follow_up": [],
+    }
+    with pytest.raises(ValueError, match="unverified success"):
+        validate_remediation_report(report, state)

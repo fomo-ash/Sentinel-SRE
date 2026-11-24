@@ -43,7 +43,7 @@ The detailed file-by-file plan and acceptance gates for Phases 4 and 5 are in [P
 | --- | --- | --- |
 | 4. Diagnostics and loop (complete on synthetic fixtures) | `python/tests/`; [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md) | Local contract, graph transition, and end-to-end fixture gates passed; future configuration expansion is optional |
 | 5. Diagnosis and evaluation (complete on synthetic fixtures) | `python/evaluation/`; model diagnosis node and adapter; tests; [Phase 5 review](../python/evaluation/PHASE5_REVIEW.md) | Three-arm comparison recorded; held-out supported-cause miss and unreviewed labels limit any quality claim |
-| 6. Approval and remediation | `python/src/sentinel/nodes/approval.py`, `remediate.py`, `verify.py`; `tools/remediation.py`; `graph.py`; Go mock endpoints; tests | Checkpointed human interrupt before allowlisted simulated action, then verification and report |
+| 6. Approval and remediation (Task 1 complete; Tasks 2–8 planned) | [Eight-task Phase 6 plan](PHASE6_PLAN.md) with implementation files and a separate test-files section | Strict state contract and intake reset implemented; approval, simulated action, verification, and report routes remain planned |
 | 7. Durability and MCP | `python/src/sentinel/config.py`, `graph.py`, `tools/`; MCP server/client package; tests; deployment docs | Persistent checkpoint recovery, telemetry, access control, MCP diagnostics contracts |
 
 ## Current verification

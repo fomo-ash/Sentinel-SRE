@@ -16,6 +16,52 @@ def test_intake_sets_initial_state_and_checkpoints():
     assert result["failure_reason"] is None
     assert result["model_interpretation"] is None
     assert result["evidence"] == []
+    assert result["action_proposal"] is None
+    assert result["approval_decision"] is None
+    assert result["execution_receipt"] is None
+    assert result["verification_result"] is None
+    assert result["remediation_outcome"] is None
+    assert result["remediation_report"] is None
+    assert graph.get_state(config).values == result
+
+
+def test_intake_clears_caller_supplied_phase6_records_on_reused_thread():
+    graph = build_graph()
+    config = {"configurable": {"thread_id": "phase6-reset"}}
+    incident = {"id": "diag-one", "service": "api", "summary": "Alarm"}
+    graph.invoke({"incident": incident}, config)
+    graph.update_state(
+        config,
+        {
+            "action_proposal": {"proposal_id": "old"},
+            "approval_decision": {"decision": "approve"},
+            "execution_receipt": {"action_id": "old"},
+            "verification_result": {"status": "verified"},
+            "remediation_outcome": "verified",
+            "remediation_report": {"summary": "old"},
+        },
+    )
+    result = graph.invoke(
+        {
+            "incident": incident,
+            "action_proposal": {"proposal_id": "forged"},
+            "approval_decision": {"decision": "approve"},
+            "execution_receipt": {"action_id": "forged"},
+        },
+        config,
+    )
+    assert all(
+        result[field] is None
+        for field in (
+            "action_proposal",
+            "approval_decision",
+            "execution_receipt",
+            "execution_failure_reason",
+            "verification_result",
+            "remediation_outcome",
+            "remediation_report",
+        )
+    )
     assert graph.get_state(config).values == result
 
 

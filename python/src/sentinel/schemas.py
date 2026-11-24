@@ -1,5 +1,6 @@
 """Raw incident facts and the state shared by graph nodes."""
 
+from datetime import datetime
 from typing import Annotated, Literal, NotRequired
 
 from pydantic import ConfigDict, Field, TypeAdapter, with_config
@@ -42,6 +43,29 @@ InvestigationStopReason = Literal[
     "max_tool_calls",
     "no_usable_data",
 ]
+RemediationAction = Literal["restore_simulated_db_login"]
+RemediationOutcome = Literal[
+    "no_action",
+    "awaiting_approval",
+    "rejected",
+    "approved",
+    "execution_failed",
+    "execution_unknown",
+    "verification_failed",
+    "verification_unknown",
+    "verified",
+]
+ExecutionFailure = Literal[
+    "timeout", "unavailable", "invalid_response", "conflict", "rejected"
+]
+VerificationFailure = Literal[
+    "timeout", "unavailable", "not_found", "invalid_response", "stale", "unhealthy"
+]
+
+BoundedID = Annotated[str, Field(min_length=1, max_length=128)]
+Fingerprint = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+BoundedText = Annotated[str, Field(min_length=1, max_length=512)]
+Timestamp = Annotated[str, Field(min_length=1, max_length=40)]
 
 
 class IncidentReport(TypedDict):
@@ -92,6 +116,67 @@ class Diagnosis(TypedDict):
     unresolved_questions: list[str]
     historical_context_ids: list[str]
     source: DiagnosisSource
+
+
+@with_config(ConfigDict(extra="forbid", strict=True))
+class ActionProposal(TypedDict):
+    proposal_id: BoundedID
+    incident_id: BoundedID
+    service: BoundedID
+    action: RemediationAction
+    reason: BoundedText
+    current_evidence_ids: Annotated[list[BoundedID], Field(min_length=1, max_length=20)]
+    fingerprint: Fingerprint
+
+
+@with_config(ConfigDict(extra="forbid", strict=True))
+class ApprovalDecision(TypedDict):
+    decision_id: BoundedID
+    proposal_id: BoundedID
+    proposal_fingerprint: Fingerprint
+    incident_id: BoundedID
+    service: BoundedID
+    decision: Literal["approve", "reject"]
+    operator_id: BoundedID
+    decided_at: Timestamp
+
+
+@with_config(ConfigDict(extra="forbid", strict=True))
+class ExecutionReceipt(TypedDict):
+    action_id: BoundedID
+    incident_id: BoundedID
+    service: BoundedID
+    action: RemediationAction
+    proposal_fingerprint: Fingerprint
+    approval_reference: BoundedID
+    status: Literal["applied"]
+    applied_at: Timestamp
+
+
+@with_config(ConfigDict(extra="forbid", strict=True))
+class VerificationResult(TypedDict):
+    action_id: BoundedID
+    incident_id: BoundedID
+    service: BoundedID
+    status: Literal["verified", "failed", "unknown"]
+    observation_id: BoundedID | None
+    observed_at: Timestamp | None
+    failure_reason: VerificationFailure | None
+
+
+@with_config(ConfigDict(extra="forbid", strict=True))
+class RemediationReport(TypedDict):
+    incident_id: BoundedID
+    service: BoundedID
+    outcome: RemediationOutcome
+    final_severity: Severity
+    diagnosis_status: DiagnosisStatus | None
+    summary: BoundedText
+    proposal_id: BoundedID | None
+    decision_id: BoundedID | None
+    action_id: BoundedID | None
+    verification_status: Literal["verified", "failed", "unknown"] | None
+    follow_up: Annotated[list[BoundedText], Field(max_length=10)]
 
 
 @with_config(ConfigDict(extra="forbid"))
@@ -150,6 +235,13 @@ class InvestigationState(TypedDict):
     diagnosis_latency_ms: NotRequired[float]
     historical_matches: NotRequired[list[dict]]
     retrieval_failure_reason: NotRequired[RetrievalFailure | None]
+    action_proposal: NotRequired[ActionProposal | None]
+    approval_decision: NotRequired[ApprovalDecision | None]
+    execution_receipt: NotRequired[ExecutionReceipt | None]
+    execution_failure_reason: NotRequired[ExecutionFailure | None]
+    verification_result: NotRequired[VerificationResult | None]
+    remediation_outcome: NotRequired[RemediationOutcome | None]
+    remediation_report: NotRequired[RemediationReport | None]
 
 
 def validate_incident(incident: IncidentReport) -> None:
@@ -161,6 +253,169 @@ def validate_incident(incident: IncidentReport) -> None:
 
 
 _diagnosis_adapter = TypeAdapter(Diagnosis)
+_proposal_adapter = TypeAdapter(ActionProposal)
+_approval_adapter = TypeAdapter(ApprovalDecision)
+_receipt_adapter = TypeAdapter(ExecutionReceipt)
+_verification_adapter = TypeAdapter(VerificationResult)
+_report_adapter = TypeAdapter(RemediationReport)
+
+
+def _require_nonblank(value: str, field: str) -> None:
+    if not value.strip():
+        raise ValueError(f"{field} must be nonblank")
+
+
+def _require_timestamp(value: str, field: str) -> None:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"{field} must be a timezone-aware timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"{field} must be a timezone-aware timestamp")
+
+
+def validate_action_proposal(
+    value: object, state: InvestigationState
+) -> ActionProposal:
+    """Validate a bounded proposal against current incident evidence."""
+    proposal = _proposal_adapter.validate_python(value, strict=True)
+    incident = state["incident"]
+    if (proposal["incident_id"], proposal["service"]) != (
+        incident["id"],
+        incident["service"],
+    ):
+        raise ValueError("Proposal incident or service does not match")
+    for field in ("proposal_id", "incident_id", "service", "reason"):
+        _require_nonblank(proposal[field], field)
+    ids = proposal["current_evidence_ids"]
+    if len(ids) != len(set(ids)) or any(not item.strip() for item in ids):
+        raise ValueError("Proposal evidence IDs must be unique and nonblank")
+    current_ids = {
+        item["id"]
+        for item in state.get("evidence", [])
+        if item["incident_id"] == incident["id"]
+        and item["service"] == incident["service"]
+    }
+    if not set(ids) <= current_ids:
+        raise ValueError("Proposal cites non-current evidence")
+    return proposal
+
+
+def validate_approval_decision(
+    value: object, proposal: ActionProposal, state: InvestigationState
+) -> ApprovalDecision:
+    """Bind a recorded decision to the exact pending proposal."""
+    decision = _approval_adapter.validate_python(value, strict=True)
+    incident = state["incident"]
+    if (
+        decision["proposal_id"] != proposal["proposal_id"]
+        or decision["proposal_fingerprint"] != proposal["fingerprint"]
+        or decision["incident_id"] != proposal["incident_id"]
+        or decision["service"] != proposal["service"]
+        or decision["incident_id"] != incident["id"]
+        or decision["service"] != incident["service"]
+    ):
+        raise ValueError("Decision does not match pending proposal")
+    for field in ("decision_id", "operator_id"):
+        _require_nonblank(decision[field], field)
+    _require_timestamp(decision["decided_at"], "decided_at")
+    return decision
+
+
+def validate_execution_receipt(
+    value: object, proposal: ActionProposal, approval: ApprovalDecision
+) -> ExecutionReceipt:
+    """Accept only a receipt for the exact approved synthetic action."""
+    receipt = _receipt_adapter.validate_python(value, strict=True)
+    if approval["decision"] != "approve":
+        raise ValueError("Execution requires an approved decision")
+    if (
+        receipt["incident_id"] != proposal["incident_id"]
+        or receipt["service"] != proposal["service"]
+        or receipt["action"] != proposal["action"]
+        or receipt["proposal_fingerprint"] != proposal["fingerprint"]
+        or receipt["approval_reference"] != approval["decision_id"]
+    ):
+        raise ValueError("Receipt does not match approved proposal")
+    _require_nonblank(receipt["action_id"], "action_id")
+    _require_timestamp(receipt["applied_at"], "applied_at")
+    return receipt
+
+
+def validate_verification_result(
+    value: object, receipt: ExecutionReceipt
+) -> VerificationResult:
+    """Validate a post-action result without treating missing data as success."""
+    result = _verification_adapter.validate_python(value, strict=True)
+    if (result["action_id"], result["incident_id"], result["service"]) != (
+        receipt["action_id"],
+        receipt["incident_id"],
+        receipt["service"],
+    ):
+        raise ValueError("Verification does not match receipt")
+    if result["status"] == "verified":
+        if (
+            result["observation_id"] is None
+            or result["observed_at"] is None
+            or result["failure_reason"] is not None
+        ):
+            raise ValueError("Verified result requires an observation without failure")
+        _require_nonblank(result["observation_id"], "observation_id")
+        _require_timestamp(result["observed_at"], "observed_at")
+        applied = datetime.fromisoformat(receipt["applied_at"].replace("Z", "+00:00"))
+        observed = datetime.fromisoformat(result["observed_at"].replace("Z", "+00:00"))
+        if observed < applied:
+            raise ValueError("Verification observation predates action")
+    else:
+        if result["failure_reason"] is None:
+            raise ValueError("Unverified result requires a failure reason")
+        if result["observed_at"] is not None:
+            _require_timestamp(result["observed_at"], "observed_at")
+        if result["observation_id"] is not None:
+            _require_nonblank(result["observation_id"], "observation_id")
+    return result
+
+
+def validate_remediation_report(
+    value: object, state: InvestigationState
+) -> RemediationReport:
+    """Reject a report that changes incident facts or claims unsupported success."""
+    report = _report_adapter.validate_python(value, strict=True)
+    incident = state["incident"]
+    if (report["incident_id"], report["service"]) != (
+        incident["id"],
+        incident["service"],
+    ):
+        raise ValueError("Report incident or service does not match")
+    if report["final_severity"] != state.get("final_severity"):
+        raise ValueError("Report changes final severity")
+    diagnosis = state.get("diagnosis")
+    if report["diagnosis_status"] != (diagnosis["status"] if diagnosis else None):
+        raise ValueError("Report changes diagnosis status")
+    proposal = state.get("action_proposal")
+    approval = state.get("approval_decision")
+    receipt = state.get("execution_receipt")
+    for field, expected in (
+        ("proposal_id", proposal["proposal_id"] if proposal else None),
+        ("decision_id", approval["decision_id"] if approval else None),
+        ("action_id", receipt["action_id"] if receipt else None),
+    ):
+        if report[field] != expected:
+            raise ValueError(f"Report {field} does not match workflow state")
+    _require_nonblank(report["summary"], "summary")
+    for item in report["follow_up"]:
+        _require_nonblank(item, "follow_up item")
+    verification = state.get("verification_result")
+    if report["outcome"] == "verified" and (
+        approval is None
+        or approval["decision"] != "approve"
+        or receipt is None
+        or verification is None
+        or verification["status"] != "verified"
+        or report["verification_status"] != "verified"
+    ):
+        raise ValueError("Report claims unverified success")
+    return report
 
 
 def validate_diagnosis(value: object, state: InvestigationState) -> Diagnosis:

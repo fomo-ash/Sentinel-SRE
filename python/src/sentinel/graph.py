@@ -55,6 +55,13 @@ def receive_incident(state: InvestigationState) -> dict:
         "diagnosis_latency_ms": 0.0,
         "historical_matches": [],
         "retrieval_failure_reason": None,
+        "action_proposal": None,
+        "approval_decision": None,
+        "execution_receipt": None,
+        "execution_failure_reason": None,
+        "verification_result": None,
+        "remediation_outcome": None,
+        "remediation_report": None,
     }
 
 
