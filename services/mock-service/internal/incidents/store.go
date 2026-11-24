@@ -9,6 +9,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,7 +28,7 @@ type HealthCheck struct {
 	Detail string `json:"detail"`
 }
 
-// HealthSnapshot is the fixed observation returned for one incident.
+// HealthSnapshot is one synthetic observation returned for an incident.
 type HealthSnapshot struct {
 	IncidentID string        `json:"incident_id"`
 	Service    string        `json:"service"`
@@ -36,11 +37,17 @@ type HealthSnapshot struct {
 	Checks     []HealthCheck `json:"checks"`
 }
 
-// Store holds validated, immutable synthetic observations.
+// Store holds immutable fixture observations and process-local remediation state.
+// The mutex protects all mutable action state, so a reader never sees an
+// applied receipt without the matching simulated health change.
 type Store struct {
-	health  map[string]HealthSnapshot
-	metrics map[string]MetricsSnapshot
-	logs    map[string]LogSnapshot
+	mu            sync.RWMutex
+	health        map[string]HealthSnapshot
+	metrics       map[string]MetricsSnapshot
+	logs          map[string]LogSnapshot
+	healthOverlay map[string]HealthSnapshot
+	actions       map[string]appliedAction
+	approvalUses  map[string]string
 }
 
 // ValidID restricts lookups to synthetic incident IDs, never file paths or URLs.
@@ -157,15 +164,20 @@ func DefaultStore() (*Store, error) {
 	return loadStoreWithLogs(defaultFixtures, defaultMetricFixtures, defaultLogFixtures)
 }
 
-// Health returns a copy of a snapshot and its checks so callers cannot mutate
-// later responses. The bool is false for an unknown incident ID.
+// Health returns the latest synthetic view while preserving the embedded fixture.
+// It returns a defensive copy; the bool is false for an unknown incident ID.
 func (s *Store) Health(id string) (HealthSnapshot, bool) {
 	if s == nil {
 		return HealthSnapshot{}, false
 	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	snapshot, ok := s.health[id]
 	if !ok {
 		return HealthSnapshot{}, false
+	}
+	if overlay, applied := s.healthOverlay[id]; applied {
+		snapshot = overlay
 	}
 	snapshot.Checks = append([]HealthCheck{}, snapshot.Checks...)
 	return snapshot, true

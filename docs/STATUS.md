@@ -1,6 +1,6 @@
 # Sentinel status and file-by-file work list
 
-Updated 2026-11-23. This tracks implemented code, planned work, and the next files to edit. The current application is a simulated-incident foundation, not a production-ready SRE agent. See [ROADMAP.md](ROADMAP.md) for learning objectives and acceptance criteria.
+Updated 2026-11-25. This tracks implemented code, planned work, and the next files to edit. The current application is a simulated-incident foundation, not a production-ready SRE agent. See [ROADMAP.md](ROADMAP.md) for learning objectives and acceptance criteria.
 
 ## Done
 
@@ -43,11 +43,12 @@ The detailed file-by-file plan and acceptance gates for Phases 4 and 5 are in [P
 | --- | --- | --- |
 | 4. Diagnostics and loop (complete on synthetic fixtures) | `python/tests/`; [Phase 4 review](../python/evaluation/PHASE4_REVIEW.md) | Local contract, graph transition, and end-to-end fixture gates passed; future configuration expansion is optional |
 | 5. Diagnosis and evaluation (complete on synthetic fixtures) | `python/evaluation/`; model diagnosis node and adapter; tests; [Phase 5 review](../python/evaluation/PHASE5_REVIEW.md) | Three-arm comparison recorded; held-out supported-cause miss and unreviewed labels limit any quality claim |
-| 6. Approval and remediation (Tasks 1–3 complete; Tasks 4–8 planned) | [Eight-task Phase 6 plan](PHASE6_PLAN.md) with implementation files and a separate test-files section | Strict state contract, deterministic proposal, and approval-only interrupt implemented; simulated action, verification, and report routes remain planned |
+| 6. Approval and remediation (Tasks 1–4 complete; Tasks 5–8 planned) | [Eight-task Phase 6 plan](PHASE6_PLAN.md) with implementation files and a separate test-files section | State contract, proposal, approval interrupt, and Go mock action ledger implemented; Python execution, verification, and report routes remain planned |
 | 7. Durability and MCP | `python/src/sentinel/config.py`, `graph.py`, `tools/`; MCP server/client package; tests; deployment docs | Persistent checkpoint recovery, telemetry, access control, MCP diagnostics contracts |
 
 ## Current verification
 
+- On 2026-11-25, Phase 6 Task 4 passed `go test -count=1 ./...` and `go test -race -count=1 ./...` in `services/mock-service/`. The new tests cover approval-record validation, one effect across concurrent replay, action-ID and approval reuse conflicts, receipt lookup, health overlay isolation, and a fresh store reset. The Python graph did not invoke the mock action.
 - On 2026-11-24, the Phase 6 Task 3 approval-only route passed **214 Python tests** with `pytest -q tests --basetemp=.pytest_phase6_task3_tmp`. Ruff lint and formatting checks passed across `src`, `tests`, `evaluation`, and `retrieval`. Tests cover interrupt, same-thread approve/reject, wrong-thread and stale responses, bounded invalid-response retries, and repeated resume. No remediation action was executed.
 - On 2026-11-24, the Phase 6 Task 2 proposal route passed **197 Python tests** with `pytest -q tests --basetemp=.pytest_phase6_task2_tmp`. Ruff lint and formatting checks passed across `src`, `tests`, `evaluation`, and `retrieval`. The proposal tests use embedded synthetic fixtures and fake clients; no remediation action was executed.
 - On 2026-11-23, the Python suite has **179 passed** tests with a workspace-local pytest temp directory, including model diagnosis validation, repair/retry/fallback, graph routing, and evaluator isolation/metrics. Ruff lint and formatting pass across `src`, `tests`, `evaluation`, and `retrieval`. Automated diagnostic tests use fake clients or fake HTTP transport. Live GPT-6 Luna calls were limited to the approved synthetic Phase 5 comparison. Recheck from `python/` with `pytest -q tests --basetemp=.pytest_phase5_tmp`, `ruff check src tests evaluation retrieval`, and `ruff format --check src tests evaluation retrieval`.
@@ -56,4 +57,4 @@ The detailed file-by-file plan and acceptance gates for Phases 4 and 5 are in [P
 - A local CLI smoke run investigated `diag-degraded` through the Go mock service: three actual client calls, six current evidence items, zero failures, `checks_complete`, and 23.025 ms of diagnostic latency in one run. The service was stopped after the check. This is a local fixture check, not a performance estimate or real-world cause claim.
 - A subsequent local CLI smoke run reached the Phase 5 handoff for `diag-degraded`: three calls, `checks_complete`, unchanged `unknown` final severity, and a structured `inconclusive` diagnosis with no hypotheses. The service was stopped after the check.
 - On 2026-11-23, `go test -count=1 ./...` passes in `services/mock-service/` with a workspace-local writable Go build cache. The service's process health and incident health/metrics/logs routes use fixed local fixtures, including original and alternate database authentication observations.
-- The repository has an optional OpenAI provider adapter, recorded synthetic classification and retrieval evaluations, and an opt-in graph path through an in-memory historical retrieval index. It has no vector database, MCP server, remediation path, or persistent checkpointer yet.
+- The repository has an optional OpenAI provider adapter, recorded synthetic classification and retrieval evaluations, and an opt-in graph path through an in-memory historical retrieval index. The Go service has one local synthetic action endpoint, but the Python graph has no execution path to it yet. There is no vector database, MCP server, or persistent checkpointer.

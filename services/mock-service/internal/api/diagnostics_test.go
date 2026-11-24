@@ -58,3 +58,48 @@ func TestIncidentHealthReadOnlyContract(t *testing.T) {
 		})
 	}
 }
+
+// TestIncidentHealthReflectsOnlyTheApprovedMockOverlay verifies that the new
+// health observation is scoped to one synthetic incident. The original fixture
+// and the process health route stay independent of the simulated effect.
+func TestIncidentHealthReflectsOnlyTheApprovedMockOverlay(t *testing.T) {
+	store, err := incidents.DefaultStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewHandler(store)
+	read := func(path string) incidents.HealthSnapshot {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET %s: status=%d body=%s", path, recorder.Code, recorder.Body.String())
+		}
+		var snapshot incidents.HealthSnapshot
+		if err := json.Unmarshal(recorder.Body.Bytes(), &snapshot); err != nil {
+			t.Fatal(err)
+		}
+		return snapshot
+	}
+	before := read("/incidents/diag-db-auth/health")
+	if before.Status != "unhealthy" || before.Checks[0].ID != "database_auth" {
+		t.Fatalf("unexpected baseline health: %#v", before)
+	}
+	request := approvedHTTPAction()
+	response := postAction(t, handler, "/incidents/diag-db-auth/remediations", request)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("simulated action status=%d body=%s", response.Code, response.Body.String())
+	}
+	after := read("/incidents/diag-db-auth/health")
+	if after.Status != "healthy" || after.Checks[0].ID != "db_login_restored" || after.ObservedAt == before.ObservedAt {
+		t.Fatalf("post-action health does not reflect overlay: %#v", after)
+	}
+	if storeHealth, _ := store.Health("diag-healthy"); storeHealth.Status != "healthy" {
+		t.Fatalf("unrelated fixture changed: %#v", storeHealth)
+	}
+	process := httptest.NewRecorder()
+	handler.ServeHTTP(process, httptest.NewRequest(http.MethodGet, "/health", nil))
+	if process.Code != http.StatusOK || process.Body.String() != "{\"status\":\"ok\"}\n" {
+		t.Fatalf("process health changed: status=%d body=%s", process.Code, process.Body.String())
+	}
+}

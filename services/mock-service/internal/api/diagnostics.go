@@ -7,8 +7,9 @@ import (
 	"github.com/sentinel-sre/mock-service/internal/incidents"
 )
 
-// incidentHealthHandler returns a fixture snapshot without changing store state.
-// It uses stable JSON error codes so clients can distinguish bad and absent IDs.
+// incidentHealthHandler returns a defensive copy of the current synthetic view.
+// Before an action this is the immutable fixture; afterward it is the local
+// overlay. Stable JSON errors distinguish invalid and absent incident IDs.
 func incidentHealthHandler(store *incidents.Store) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

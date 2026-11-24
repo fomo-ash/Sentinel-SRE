@@ -1,13 +1,13 @@
 # Phase 6 implementation plan: human approval and simulated remediation
 
-Status: **Tasks 1–3 implemented; Tasks 4–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
+Status: **Tasks 1–4 implemented; Tasks 5–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
 
 ## Task checklist
 
 - [x] 1. Define the remediation state and validation contract.
 - [x] 2. Produce one deterministic, evidence-bound proposal.
 - [x] 3. Add a checkpointed human approval handoff.
-- [ ] 4. Add the local mock action and idempotency ledger.
+- [x] 4. Add the local mock action and idempotency ledger.
 - [ ] 5. Build a narrow Python action client.
 - [ ] 6. Execute only after recorded approval.
 - [ ] 7. Verify the effect and produce a truthful report.
@@ -76,12 +76,13 @@ result = graph.invoke(Command(resume=response), config)
 
 Here `config` is the exact `thread_id`, `investigation_mode="simulated"`, and `remediation_mode="approval"` configuration used to start the run. Both decisions stop before any action.
 
-### 4. Add the local mock action and idempotency ledger
+### 4. Add the local mock action and idempotency ledger (implemented)
 
-- **Files:** `services/mock-service/internal/incidents/remediation.go`, `services/mock-service/internal/api/remediation.go`, `services/mock-service/internal/api/diagnostics.go`, `services/mock-service/cmd/server/main.go`.
-- Add one loopback-only synthetic mutation contract for `restore_simulated_db_login` and a read contract to look up its receipt by action ID. Require a bounded action ID, incident/service, exact allowlisted action, proposal fingerprint, and recorded approval reference in the request. Reject unknown IDs, other services/actions, malformed bodies, and missing approval references with stable JSON error codes. This is a local simulation contract, not authentication of a human operator; Phase 7 must add access control before any stronger claim.
+- **Files:** `services/mock-service/internal/incidents/store.go` (add the overlay and synchronize health reads), `services/mock-service/internal/incidents/remediation.go` (new action ledger and atomic effect), `services/mock-service/internal/api/health.go` (register action and receipt routes), `services/mock-service/internal/api/remediation.go` (new validated HTTP handlers), and `services/mock-service/internal/api/diagnostics.go` (update the health handler's immutable-fixture comment). `cmd/server/main.go` already constructs the store and handler, so it needs no change unless that wiring changes during implementation.
+- Add one loopback-only synthetic mutation contract for `restore_simulated_db_login` and a read contract to look up its receipt by action ID. Require a bounded action ID, incident/service, exact allowlisted action, proposal fingerprint, and recorded approval decision in the request. Reject unknown IDs, other services/actions, malformed bodies, and missing approval records with stable JSON error codes. This is a local simulation contract, not authentication of a human operator; Phase 7 must add access control before any stronger claim.
 - Under a mutex, atomically store one action receipt and apply a per-process overlay to the `diag-db-auth` incident health snapshot. Give the overlay a distinct restored check ID and a post-action observation time tied to the receipt. Keep the embedded baseline fixture immutable. Repeating the same action ID and identical request returns the original receipt without reapplying; reusing the ID with different content returns a conflict. The receipt lookup allows recovery after a response is lost. No arbitrary command, URL, target, or credential is accepted.
 - **Done when:** pre-action reads still expose the original fixture, one valid action changes only the intended synthetic health observation, repeated requests do not duplicate the effect, and a server restart resets this in-memory simulation.
+- **Implemented:** the Go store atomically records a receipt, consumes one approval reference, and overlays only `diag-db-auth` health. The HTTP handler validates a complete approve decision bound to the proposal, rejects malformed or unsupported requests, and exposes a read-only receipt lookup. Exact action-ID replay returns the original receipt; changed requests or reused approvals conflict. A fresh store has the original fixture. Go store, HTTP, and race-detector tests pass. This endpoint is not called by the Python workflow yet; Tasks 5–6 add the client and execution node.
 
 ### 5. Build a narrow Python action client
 
@@ -113,7 +114,7 @@ Here `config` is the exact `thread_id`, `investigation_mode="simulated"`, and `r
 
 ## Test files — separate from the eight implementation tasks
 
-The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`. The remaining files are for later tasks.
+The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`; Task 4 added the two Go remediation test files and extended `diagnostics_test.go`. The remaining files are for later tasks.
 
 | Test file | Required coverage |
 | --- | --- |
@@ -126,5 +127,6 @@ The files below are **tests to add or extend during implementation**. No test fi
 | `python/tests/test_verification.py` | Fresh incident read, matching receipt and observation, stale/missing/unhealthy/invalid/timeout results, and truthful reports. |
 | `services/mock-service/internal/incidents/remediation_test.go` | Atomic effect and receipt, same-ID replay, conflicting reuse, unrelated fixture unchanged, baseline immutability. |
 | `services/mock-service/internal/api/remediation_test.go` | Local HTTP request/response contracts, method and body validation, approval reference requirement, stable errors, receipt lookup. |
+| `services/mock-service/internal/api/diagnostics_test.go` | Pre-action and post-action health reads, with unrelated incident and process health unchanged. |
 
 Run Python graph and client tests with fake clients and fake HTTP transports; use Go `httptest` for server contracts. Then run the full Python and Go suites, Ruff checks, and a short loopback smoke run. The acceptance gate is: **zero actions before approval or after rejection; one effect for one approved action across replay; explicit failure or unknown on lost execution or failed verification; no real infrastructure calls.**

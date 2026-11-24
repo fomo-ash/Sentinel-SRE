@@ -58,7 +58,7 @@ Each phase is a separate reviewable change. Phases 0–5 are implemented; Phases
 
 ## Phase 6 — Human approval and simulated remediation
 
-- **Detailed eight-task plan:** [PHASE6_PLAN.md](PHASE6_PLAN.md) specifies the state contract, deterministic proposal, checkpointed approval, local mock effect, idempotent client and execution, verification, operator flow, acceptance gate, and a separate test-files section. Tasks 1–3 are implemented: the state contract, evidence-bound proposal, and approval-only interrupt. Simulated execution and verification remain planned.
+- **Detailed eight-task plan:** [PHASE6_PLAN.md](PHASE6_PLAN.md) specifies the state contract, deterministic proposal, checkpointed approval, local mock effect, idempotent client and execution, verification, operator flow, acceptance gate, and a separate test-files section. Tasks 1–4 are implemented: the state contract, evidence-bound proposal, approval-only interrupt, and local Go mock action with receipt lookup. Python action execution and verification remain planned.
 - **Learn:** checkpoint-backed interrupts, `Command(resume=...)`, and idempotent effects. [LangGraph interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts).
 - **Tasks:** complete the eight tasks in the detailed plan. Start with one evidence-bound synthetic action, interrupt before execution, validate an explicit decision tied to the exact proposal, record approval in the graph checkpoint, apply at most one local effect, read incident health again, and produce a truthful report for every terminal route.
 - **Tests / done:** no action before approval or after rejection; resume uses the same thread; retries cannot duplicate an action; failed verification is reported.
