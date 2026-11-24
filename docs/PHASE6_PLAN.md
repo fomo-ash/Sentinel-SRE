@@ -1,12 +1,12 @@
 # Phase 6 implementation plan: human approval and simulated remediation
 
-Status: **Tasks 1–2 implemented; Tasks 3–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
+Status: **Tasks 1–3 implemented; Tasks 4–8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
 
 ## Task checklist
 
 - [x] 1. Define the remediation state and validation contract.
 - [x] 2. Produce one deterministic, evidence-bound proposal.
-- [ ] 3. Add a checkpointed human approval handoff.
+- [x] 3. Add a checkpointed human approval handoff.
 - [ ] 4. Add the local mock action and idempotency ledger.
 - [ ] 5. Build a narrow Python action client.
 - [ ] 6. Execute only after recorded approval.
@@ -47,12 +47,34 @@ Use the existing `InMemorySaver` for the checkpointed interrupt. A pending appro
 - **Done when:** the supported `diag-db-auth` case yields one exact proposal; healthy, missing, alternate, rejected-policy, and inconclusive cases yield none. Proposal creation makes zero mutation calls.
 - **Implemented:** `remediation_mode="proposal"` is available only with `investigation_mode="simulated"`. After either diagnosis route, the pure node applies the same narrow database login rejection policy, requires complete diagnostics without read failures, and checkpoints a proposal or a fixed `no_action_reason`. Its SHA-256 fingerprint binds the incident, action, and exact current evidence records. This stage ends at `END` after the proposal or abstention; Task 3 adds the interrupt and Task 7 adds reporting. The omitted or `off` mode leaves the existing route unchanged.
 
-### 3. Add a checkpointed human approval handoff
+### 3. Add a checkpointed human approval handoff (implemented)
 
 - **Files:** `python/src/sentinel/nodes/approval.py`, `python/src/sentinel/graph.py`.
 - Put `interrupt(...)` in the approval node and show the complete proposal, current evidence IDs, and a plain warning that approval authorizes one synthetic action. Require the caller to resume with LangGraph `Command(resume=...)` using the **same `thread_id`**. Validate the resume payload as an explicit `approve` or `reject` decision bound to the pending proposal ID and fingerprint. A bare boolean, missing operator, stale proposal, different incident, or malformed response must never authorize execution.
 - Return the validated decision as a state update from the approval node. Route to execution only from a later node after that update is checkpointed. Rejection records the decision and ends in reporting. Repeated or conflicting resume attempts must not produce a second action.
 - **Done when:** the graph stops at the interrupt with no action call, rejection cannot reach execution, and an approved decision is visible in the checkpoint before the execution node runs.
+- **Implemented:** `remediation_mode="approval"` requires a simulated investigation. An eligible proposal is checkpointed with `awaiting_approval`, then LangGraph interrupts with the full proposal, thread ID, evidence IDs, and warning. Resume with `Command(resume=...)` on the same thread and mode, supplying the exact proposal ID and fingerprint, incident, service, an explicit `approve` or `reject`, and a nonblank operator ID. The workflow records the decision ID and time. Invalid replies re-interrupt with a fixed error; three invalid replies end safely as `no_action`. Approve and reject both end after the decision checkpoint for now. No action or report is generated in this task; execution and reporting remain Tasks 6–7. The operator ID is self-reported in this local simulation; authenticated identity remains Phase 7 work.
+
+For a pending result, use `pending["__interrupt__"][0].value` to inspect the proposal. Submit a response with the same `thread_id` configuration:
+
+```python
+from langgraph.types import Command
+
+prompt = pending["__interrupt__"][0].value
+proposal = prompt["proposal"]
+response = {
+    "thread_id": prompt["thread_id"],
+    "proposal_id": proposal["proposal_id"],
+    "proposal_fingerprint": proposal["fingerprint"],
+    "incident_id": proposal["incident_id"],
+    "service": proposal["service"],
+    "decision": "reject",  # or "approve" after human review
+    "operator_id": "local-reviewer",
+}
+result = graph.invoke(Command(resume=response), config)
+```
+
+Here `config` is the exact `thread_id`, `investigation_mode="simulated"`, and `remediation_mode="approval"` configuration used to start the run. Both decisions stop before any action.
 
 ### 4. Add the local mock action and idempotency ledger
 
@@ -91,7 +113,7 @@ Use the existing `InMemorySaver` for the checkpointed interrupt. A pending appro
 
 ## Test files — separate from the eight implementation tasks
 
-The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`. The remaining files are for later tasks.
+The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`. The remaining files are for later tasks.
 
 | Test file | Required coverage |
 | --- | --- |

@@ -49,6 +49,7 @@ NoActionReason = Literal[
     "incomplete_diagnostics",
     "unsupported_diagnosis",
     "unsupported_evidence",
+    "invalid_approval_response",
 ]
 RemediationOutcome = Literal[
     "no_action",
@@ -145,6 +146,19 @@ class ApprovalDecision(TypedDict):
     decision: Literal["approve", "reject"]
     operator_id: BoundedID
     decided_at: Timestamp
+
+
+@with_config(ConfigDict(extra="forbid", strict=True))
+class ApprovalResponse(TypedDict):
+    """Human-supplied fields; workflow-owned ID and time are added on resume."""
+
+    thread_id: BoundedID
+    proposal_id: BoundedID
+    proposal_fingerprint: Fingerprint
+    incident_id: BoundedID
+    service: BoundedID
+    decision: Literal["approve", "reject"]
+    operator_id: BoundedID
 
 
 @with_config(ConfigDict(extra="forbid", strict=True))
@@ -262,6 +276,7 @@ def validate_incident(incident: IncidentReport) -> None:
 _diagnosis_adapter = TypeAdapter(Diagnosis)
 _proposal_adapter = TypeAdapter(ActionProposal)
 _approval_adapter = TypeAdapter(ApprovalDecision)
+_approval_response_adapter = TypeAdapter(ApprovalResponse)
 _receipt_adapter = TypeAdapter(ExecutionReceipt)
 _verification_adapter = TypeAdapter(VerificationResult)
 _report_adapter = TypeAdapter(RemediationReport)
@@ -327,6 +342,23 @@ def validate_approval_decision(
         _require_nonblank(decision[field], field)
     _require_timestamp(decision["decided_at"], "decided_at")
     return decision
+
+
+def validate_approval_response(
+    value: object, proposal: ActionProposal, thread_id: str
+) -> ApprovalResponse:
+    """Require an explicit decision for this thread and pending proposal."""
+    response = _approval_response_adapter.validate_python(value, strict=True)
+    if (
+        response["thread_id"] != thread_id
+        or response["proposal_id"] != proposal["proposal_id"]
+        or response["proposal_fingerprint"] != proposal["fingerprint"]
+        or response["incident_id"] != proposal["incident_id"]
+        or response["service"] != proposal["service"]
+    ):
+        raise ValueError("Approval response does not match pending thread and proposal")
+    _require_nonblank(response["operator_id"], "operator_id")
+    return response
 
 
 def validate_execution_receipt(

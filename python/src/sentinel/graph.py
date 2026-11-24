@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from sentinel.nodes.approval import approval, mark_awaiting_approval
 from sentinel.nodes.classify import classify
 from sentinel.nodes.diagnose import (
     DiagnosisModel,
@@ -30,7 +31,10 @@ class HistoricalRetriever(Protocol):
 
 def receive_incident(state: InvestigationState) -> dict:
     """Receive and validate an incident."""
-    validate_incident(state["incident"])
+    incident = state.get("incident")
+    if incident is None:
+        raise ValueError("Incident report required; resume the pending thread")
+    validate_incident(incident)
     return {
         "severity": "unknown",
         "symptoms": [],
@@ -167,9 +171,9 @@ def route_diagnosis(state: InvestigationState, config: RunnableConfig) -> str:
 
 
 def route_remediation_mode(config: RunnableConfig) -> str:
-    """Phase 6 currently exposes proposal inspection without approval or effects."""
+    """Phase 6 exposes proposal inspection or an approval-only interrupt."""
     mode = config.get("configurable", {}).get("remediation_mode", "off")
-    if mode in ("off", "proposal"):
+    if mode in ("off", "proposal", "approval"):
         return mode
     raise ValueError(f"Unsupported remediation mode: {mode}")
 
@@ -178,6 +182,13 @@ def route_remediation_proposal(
     state: InvestigationState, config: RunnableConfig
 ) -> str:
     return route_remediation_mode(config)
+
+
+def route_after_proposal(state: InvestigationState, config: RunnableConfig) -> str:
+    """Only an eligible approval-mode proposal may reach the interrupt."""
+    if state.get("action_proposal") is None:
+        return "end"
+    return "approval" if route_remediation_mode(config) == "approval" else "end"
 
 
 def build_graph(
@@ -301,6 +312,8 @@ def build_graph(
     workflow.add_node("diagnose_baseline", diagnose_baseline)
     workflow.add_node("llm_diagnose", llm_diagnose_node)
     workflow.add_node("propose_remediation", propose_remediation)
+    workflow.add_node("mark_awaiting_approval", mark_awaiting_approval)
+    workflow.add_node("approval", approval)
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -342,7 +355,17 @@ def build_graph(
         workflow.add_conditional_edges(
             diagnosis_node,
             route_remediation_proposal,
-            {"off": END, "proposal": "propose_remediation"},
+            {
+                "off": END,
+                "proposal": "propose_remediation",
+                "approval": "propose_remediation",
+            },
         )
-    workflow.add_edge("propose_remediation", END)
+    workflow.add_conditional_edges(
+        "propose_remediation",
+        route_after_proposal,
+        {"end": END, "approval": "mark_awaiting_approval"},
+    )
+    workflow.add_edge("mark_awaiting_approval", "approval")
+    workflow.add_edge("approval", END)
     return workflow.compile(checkpointer=InMemorySaver())
