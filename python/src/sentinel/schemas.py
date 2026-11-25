@@ -53,6 +53,7 @@ NoActionReason = Literal[
 ]
 RemediationOutcome = Literal[
     "no_action",
+    "proposal_ready",
     "awaiting_approval",
     "rejected",
     "approved",
@@ -66,7 +67,13 @@ ExecutionFailure = Literal[
     "timeout", "unavailable", "invalid_response", "conflict", "rejected"
 ]
 VerificationFailure = Literal[
-    "timeout", "unavailable", "not_found", "invalid_response", "stale", "unhealthy"
+    "timeout",
+    "unavailable",
+    "not_found",
+    "invalid_response",
+    "stale",
+    "unhealthy",
+    "missing_observation",
 ]
 
 BoundedID = Annotated[str, Field(min_length=1, max_length=128)]
@@ -191,11 +198,16 @@ class RemediationReport(TypedDict):
     outcome: RemediationOutcome
     final_severity: Severity
     diagnosis_status: DiagnosisStatus | None
+    diagnosis: Diagnosis | None
     summary: BoundedText
     proposal_id: BoundedID | None
+    action_proposal: ActionProposal | None
     decision_id: BoundedID | None
+    approval_decision: ApprovalDecision | None
     action_id: BoundedID | None
+    execution_receipt: ExecutionReceipt | None
     verification_status: Literal["verified", "failed", "unknown"] | None
+    verification_result: VerificationResult | None
     follow_up: Annotated[list[BoundedText], Field(max_length=10)]
 
 
@@ -432,9 +444,15 @@ def validate_remediation_report(
     diagnosis = state.get("diagnosis")
     if report["diagnosis_status"] != (diagnosis["status"] if diagnosis else None):
         raise ValueError("Report changes diagnosis status")
+    if report["diagnosis"] != diagnosis:
+        raise ValueError("Report changes diagnosis")
     proposal = state.get("action_proposal")
     approval = state.get("approval_decision")
     receipt = state.get("execution_receipt")
+    if report["action_proposal"] != proposal:
+        raise ValueError("Report proposal does not match workflow state")
+    if report["approval_decision"] != approval:
+        raise ValueError("Report approval does not match workflow state")
     for field, expected in (
         ("proposal_id", proposal["proposal_id"] if proposal else None),
         ("decision_id", approval["decision_id"] if approval else None),
@@ -446,6 +464,22 @@ def validate_remediation_report(
     for item in report["follow_up"]:
         _require_nonblank(item, "follow_up item")
     verification = state.get("verification_result")
+    if report["execution_receipt"] != receipt:
+        raise ValueError("Report receipt does not match workflow state")
+    if report["verification_result"] != verification:
+        raise ValueError("Report verification does not match workflow state")
+    if report["outcome"] != state.get("remediation_outcome"):
+        raise ValueError("Report outcome does not match workflow state")
+    if report["outcome"] == "verified" and verification is None:
+        raise ValueError("Report claims unverified success")
+    if report["verification_status"] != (
+        verification["status"] if verification else None
+    ):
+        raise ValueError("Report verification status does not match workflow state")
+    if verification is not None:
+        if receipt is None:
+            raise ValueError("Verification requires an execution receipt")
+        validate_verification_result(verification, receipt)
     if report["outcome"] == "verified" and (
         approval is None
         or approval["decision"] != "approve"
@@ -455,6 +489,29 @@ def validate_remediation_report(
         or report["verification_status"] != "verified"
     ):
         raise ValueError("Report claims unverified success")
+    if report["outcome"] in ("verification_failed", "verification_unknown") and (
+        receipt is None
+        or verification is None
+        or verification["status"]
+        != ("failed" if report["outcome"] == "verification_failed" else "unknown")
+    ):
+        raise ValueError("Report has no matching verification result")
+    if report["outcome"] == "approved" and (
+        state.get("approval_mode") != "approval" or receipt is not None
+    ):
+        raise ValueError("Approval-only report cannot claim an applied action")
+    if report["outcome"] == "rejected" and (
+        approval is None or approval["decision"] != "reject" or receipt is not None
+    ):
+        raise ValueError("Rejected report requires a matching rejection")
+    if report["outcome"] == "no_action" and (
+        approval is not None or receipt is not None
+    ):
+        raise ValueError("No-action report cannot include an action")
+    if report["outcome"] == "proposal_ready" and (
+        proposal is None or approval is not None or receipt is not None
+    ):
+        raise ValueError("Proposal report requires an unapproved proposal")
     return report
 
 

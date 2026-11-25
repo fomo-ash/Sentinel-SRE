@@ -302,20 +302,37 @@ def test_phase6_contract_accepts_matching_current_records():
     state["approval_decision"] = decision
     state["execution_receipt"] = receipt
     state["verification_result"] = verification
+    state["remediation_outcome"] = "verified"
     report = {
         "incident_id": "diag-one",
         "service": "api",
         "outcome": "verified",
         "final_severity": "unknown",
         "diagnosis_status": "supported",
+        "diagnosis": state["diagnosis"],
         "summary": "The synthetic action was verified by a fresh observation.",
         "proposal_id": "proposal-one",
+        "action_proposal": proposal,
         "decision_id": "decision-one",
+        "approval_decision": decision,
         "action_id": "action-one",
+        "execution_receipt": receipt,
         "verification_status": "verified",
+        "verification_result": verification,
         "follow_up": [],
     }
     assert validate_remediation_report(report, state) == report
+    report["execution_receipt"] = {**receipt, "approval_reference": "other"}
+    with pytest.raises(ValueError, match="receipt does not match"):
+        validate_remediation_report(report, state)
+    report["execution_receipt"] = receipt
+    report["diagnosis"] = None
+    with pytest.raises(ValueError, match="changes diagnosis"):
+        validate_remediation_report(report, state)
+    report["diagnosis"] = state["diagnosis"]
+    report["outcome"] = "verification_failed"
+    with pytest.raises(ValueError, match="outcome does not match"):
+        validate_remediation_report(report, state)
 
 
 def test_phase6_proposal_rejects_non_current_evidence_and_unknown_fields():
@@ -375,17 +392,23 @@ def test_phase6_verification_and_report_cannot_claim_unobserved_success():
     state["action_proposal"] = proposal
     state["approval_decision"] = decision
     state["execution_receipt"] = receipt
+    state["remediation_outcome"] = "verified"
     report = {
         "incident_id": "diag-one",
         "service": "api",
         "outcome": "verified",
         "final_severity": "unknown",
         "diagnosis_status": "supported",
+        "diagnosis": state["diagnosis"],
         "summary": "Resolved.",
         "proposal_id": "proposal-one",
+        "action_proposal": proposal,
         "decision_id": "decision-one",
+        "approval_decision": decision,
         "action_id": "action-one",
+        "execution_receipt": receipt,
         "verification_status": "verified",
+        "verification_result": None,
         "follow_up": [],
     }
     with pytest.raises(ValueError, match="unverified success"):

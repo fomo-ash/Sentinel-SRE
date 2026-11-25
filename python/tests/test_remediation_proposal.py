@@ -69,7 +69,9 @@ def test_supported_fixture_produces_one_checkpointed_proposal_without_action():
     assert len(proposal["fingerprint"]) == 64
     assert proposal["proposal_id"].startswith("proposal-")
     assert result["no_action_reason"] is None
-    assert result["remediation_outcome"] is None
+    assert result["remediation_outcome"] == "proposal_ready"
+    assert result["remediation_report"]["outcome"] == "proposal_ready"
+    assert result["remediation_report"]["action_id"] is None
     assert result["approval_decision"] is None
     assert result["execution_receipt"] is None
     assert result["final_severity"] == "unknown"
@@ -91,6 +93,7 @@ def test_other_fixtures_have_no_action(incident_id, service):
     assert result["action_proposal"] is None
     assert result["no_action_reason"] == "ineligible_incident"
     assert result["remediation_outcome"] == "no_action"
+    assert result["remediation_report"]["outcome"] == "no_action"
     assert result["approval_decision"] is None
     assert result["execution_receipt"] is None
     assert client.calls == ["health", "metrics", "logs"]

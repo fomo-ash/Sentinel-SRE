@@ -19,7 +19,9 @@ from sentinel.nodes.investigate import DIAGNOSTIC_PLAN, plan_diagnostics, run_di
 from sentinel.nodes.llm_classify import ClassificationModel, build_llm_classify_node
 from sentinel.nodes.propose_remediation import propose_remediation
 from sentinel.nodes.remediate import build_remediate_node
+from sentinel.nodes.report import mark_proposal_ready, report_remediation
 from sentinel.nodes.severity_policy import severity_policy
+from sentinel.nodes.verify import build_verify_node
 from sentinel.schemas import InvestigationState, validate_incident
 from sentinel.tools.diagnostics import DiagnosticClient, validate_diagnostic_request
 from sentinel.tools.remediation import RemediationClient
@@ -192,13 +194,12 @@ def route_remediation_proposal(
 
 def route_after_proposal(state: InvestigationState, config: RunnableConfig) -> str:
     """Only an eligible approval or simulated proposal reaches the interrupt."""
+    mode = route_remediation_mode(config)
     if state.get("action_proposal") is None:
-        return "end"
-    return (
-        "approval"
-        if route_remediation_mode(config) in ("approval", "simulated")
-        else "end"
-    )
+        return "report"
+    if mode == "proposal":
+        return "proposal_report"
+    return "approval" if mode in ("approval", "simulated") else "end"
 
 
 def route_after_approval(state: InvestigationState, config: RunnableConfig) -> str:
@@ -212,7 +213,17 @@ def route_after_approval(state: InvestigationState, config: RunnableConfig) -> s
         and state.get("approval_mode") == "simulated"
     ):
         return "execute"
-    return "end"
+    return "report"
+
+
+def route_after_execution(state: InvestigationState) -> str:
+    """Only an applied receipt needs a fresh health observation."""
+    if (
+        state.get("remediation_outcome") == "approved"
+        and state.get("execution_receipt") is not None
+    ):
+        return "verify"
+    return "report"
 
 
 def build_graph(
@@ -341,6 +352,9 @@ def build_graph(
     workflow.add_node("mark_awaiting_approval", mark_awaiting_approval)
     workflow.add_node("approval", approval)
     workflow.add_node("remediate", build_remediate_node(remediation_client))
+    workflow.add_node("verify_remediation", build_verify_node(diagnostic_client))
+    workflow.add_node("report_remediation", report_remediation)
+    workflow.add_node("mark_proposal_ready", mark_proposal_ready)
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -392,13 +406,25 @@ def build_graph(
     workflow.add_conditional_edges(
         "propose_remediation",
         route_after_proposal,
-        {"end": END, "approval": "mark_awaiting_approval"},
+        {
+            "end": END,
+            "approval": "mark_awaiting_approval",
+            "report": "report_remediation",
+            "proposal_report": "mark_proposal_ready",
+        },
     )
+    workflow.add_edge("mark_proposal_ready", "report_remediation")
     workflow.add_edge("mark_awaiting_approval", "approval")
     workflow.add_conditional_edges(
         "approval",
         route_after_approval,
-        {"execute": "remediate", "end": END},
+        {"execute": "remediate", "report": "report_remediation"},
     )
-    workflow.add_edge("remediate", END)
+    workflow.add_conditional_edges(
+        "remediate",
+        route_after_execution,
+        {"verify": "verify_remediation", "report": "report_remediation"},
+    )
+    workflow.add_edge("verify_remediation", "report_remediation")
+    workflow.add_edge("report_remediation", END)
     return workflow.compile(checkpointer=InMemorySaver())

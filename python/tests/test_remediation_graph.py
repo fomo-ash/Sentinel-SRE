@@ -118,7 +118,7 @@ def test_approved_decision_is_checkpointed_before_one_action_call():
     initial_severity = graph.get_state(config).values["final_severity"]
     approved = graph.invoke(Command(resume=_response(pending)), config)
     receipt = approved["execution_receipt"]
-    assert approved["remediation_outcome"] == "approved"
+    assert approved["remediation_outcome"] == "verification_failed"
     assert approved["execution_failure_reason"] is None
     assert receipt["status"] == "applied"
     assert receipt["approval_reference"] == approved["approval_decision"]["decision_id"]
@@ -132,7 +132,7 @@ def test_approved_decision_is_checkpointed_before_one_action_call():
         for snapshot in graph.get_state_history(config)
     )
     assert graph.get_state(config).next == ()
-    assert approved["verification_result"] is None
+    assert approved["verification_result"]["failure_reason"] == "stale"
     assert approved["final_severity"] == initial_severity
 
 
@@ -296,7 +296,8 @@ def test_checkpointed_receipt_is_reused_without_any_client_call():
     graph, client, config, pending = _start()
     result = graph.invoke(Command(resume=_response(pending)), config)
     before = list(client.calls)
-    replay = build_remediate_node(client)(result, config)
+    replay_state = {**result, "remediation_outcome": "approved"}
+    replay = build_remediate_node(client)(replay_state, config)
     assert replay["execution_receipt"] == result["execution_receipt"]
     assert client.calls == before
 
