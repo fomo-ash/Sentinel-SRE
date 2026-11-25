@@ -258,6 +258,7 @@ class InvestigationState(TypedDict):
     action_proposal: NotRequired[ActionProposal | None]
     no_action_reason: NotRequired[NoActionReason | None]
     approval_decision: NotRequired[ApprovalDecision | None]
+    approval_mode: NotRequired[Literal["approval", "simulated"] | None]
     execution_receipt: NotRequired[ExecutionReceipt | None]
     execution_failure_reason: NotRequired[ExecutionFailure | None]
     verification_result: NotRequired[VerificationResult | None]

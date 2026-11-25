@@ -18,6 +18,7 @@ def test_intake_sets_initial_state_and_checkpoints():
     assert result["evidence"] == []
     assert result["action_proposal"] is None
     assert result["approval_decision"] is None
+    assert result["approval_mode"] is None
     assert result["execution_receipt"] is None
     assert result["verification_result"] is None
     assert result["remediation_outcome"] is None
@@ -35,6 +36,7 @@ def test_intake_clears_caller_supplied_phase6_records_on_reused_thread():
         {
             "action_proposal": {"proposal_id": "old"},
             "approval_decision": {"decision": "approve"},
+            "approval_mode": "simulated",
             "execution_receipt": {"action_id": "old"},
             "verification_result": {"status": "verified"},
             "remediation_outcome": "verified",
@@ -46,6 +48,7 @@ def test_intake_clears_caller_supplied_phase6_records_on_reused_thread():
             "incident": incident,
             "action_proposal": {"proposal_id": "forged"},
             "approval_decision": {"decision": "approve"},
+            "approval_mode": "simulated",
             "execution_receipt": {"action_id": "forged"},
         },
         config,
@@ -55,6 +58,7 @@ def test_intake_clears_caller_supplied_phase6_records_on_reused_thread():
         for field in (
             "action_proposal",
             "approval_decision",
+            "approval_mode",
             "execution_receipt",
             "execution_failure_reason",
             "verification_result",

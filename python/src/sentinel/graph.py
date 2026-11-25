@@ -18,9 +18,11 @@ from sentinel.nodes.evaluate import evaluate_evidence
 from sentinel.nodes.investigate import DIAGNOSTIC_PLAN, plan_diagnostics, run_diagnostic
 from sentinel.nodes.llm_classify import ClassificationModel, build_llm_classify_node
 from sentinel.nodes.propose_remediation import propose_remediation
+from sentinel.nodes.remediate import build_remediate_node
 from sentinel.nodes.severity_policy import severity_policy
 from sentinel.schemas import InvestigationState, validate_incident
 from sentinel.tools.diagnostics import DiagnosticClient, validate_diagnostic_request
+from sentinel.tools.remediation import RemediationClient
 
 
 class HistoricalRetriever(Protocol):
@@ -63,6 +65,7 @@ def receive_incident(state: InvestigationState) -> dict:
         "action_proposal": None,
         "no_action_reason": None,
         "approval_decision": None,
+        "approval_mode": None,
         "execution_receipt": None,
         "execution_failure_reason": None,
         "verification_result": None,
@@ -125,6 +128,7 @@ def route_investigation(
     *,
     client: DiagnosticClient | None,
     diagnosis_model: DiagnosisModel | None = None,
+    remediation_client: RemediationClient | None = None,
 ) -> str:
     """Require an explicit opt-in and a synthetic incident before any read."""
     mode = config.get("configurable", {}).get("investigation_mode", "off")
@@ -137,6 +141,8 @@ def route_investigation(
         raise ValueError(f"Unsupported investigation mode: {mode}")
     if client is None:
         raise ValueError("Simulated investigation requires an injected client")
+    if remediation_mode == "simulated" and remediation_client is None:
+        raise ValueError("Simulated remediation requires an injected action client")
     diagnosis_mode = route_diagnosis(state, config)
     if diagnosis_mode == "llm" and diagnosis_model is None:
         raise ValueError("LLM diagnosis mode requires an injected diagnosis model")
@@ -171,9 +177,9 @@ def route_diagnosis(state: InvestigationState, config: RunnableConfig) -> str:
 
 
 def route_remediation_mode(config: RunnableConfig) -> str:
-    """Phase 6 exposes proposal inspection or an approval-only interrupt."""
+    """Choose the explicit Phase 6 boundary."""
     mode = config.get("configurable", {}).get("remediation_mode", "off")
-    if mode in ("off", "proposal", "approval"):
+    if mode in ("off", "proposal", "approval", "simulated"):
         return mode
     raise ValueError(f"Unsupported remediation mode: {mode}")
 
@@ -185,10 +191,28 @@ def route_remediation_proposal(
 
 
 def route_after_proposal(state: InvestigationState, config: RunnableConfig) -> str:
-    """Only an eligible approval-mode proposal may reach the interrupt."""
+    """Only an eligible approval or simulated proposal reaches the interrupt."""
     if state.get("action_proposal") is None:
         return "end"
-    return "approval" if route_remediation_mode(config) == "approval" else "end"
+    return (
+        "approval"
+        if route_remediation_mode(config) in ("approval", "simulated")
+        else "end"
+    )
+
+
+def route_after_approval(state: InvestigationState, config: RunnableConfig) -> str:
+    """Only the opted-in route with a recorded approve decision may execute."""
+    decision = state.get("approval_decision")
+    if (
+        route_remediation_mode(config) == "simulated"
+        and state.get("remediation_outcome") == "approved"
+        and isinstance(decision, dict)
+        and decision.get("decision") == "approve"
+        and state.get("approval_mode") == "simulated"
+    ):
+        return "execute"
+    return "end"
 
 
 def build_graph(
@@ -197,6 +221,7 @@ def build_graph(
     retriever: HistoricalRetriever | None = None,
     retrieval_top_k: int = 3,
     diagnostic_client: DiagnosticClient | None = None,
+    remediation_client: RemediationClient | None = None,
     diagnosis_model: DiagnosisModel | None = None,
     max_investigation_rounds: int = 3,
     max_tool_calls: int = 6,
@@ -297,6 +322,7 @@ def build_graph(
             config,
             client=diagnostic_client,
             diagnosis_model=diagnosis_model,
+            remediation_client=remediation_client,
         )
 
     workflow = StateGraph(InvestigationState)
@@ -314,6 +340,7 @@ def build_graph(
     workflow.add_node("propose_remediation", propose_remediation)
     workflow.add_node("mark_awaiting_approval", mark_awaiting_approval)
     workflow.add_node("approval", approval)
+    workflow.add_node("remediate", build_remediate_node(remediation_client))
     workflow.add_edge(START, "receive_incident")
     workflow.add_conditional_edges(
         "receive_incident",
@@ -359,6 +386,7 @@ def build_graph(
                 "off": END,
                 "proposal": "propose_remediation",
                 "approval": "propose_remediation",
+                "simulated": "propose_remediation",
             },
         )
     workflow.add_conditional_edges(
@@ -367,5 +395,10 @@ def build_graph(
         {"end": END, "approval": "mark_awaiting_approval"},
     )
     workflow.add_edge("mark_awaiting_approval", "approval")
-    workflow.add_edge("approval", END)
+    workflow.add_conditional_edges(
+        "approval",
+        route_after_approval,
+        {"execute": "remediate", "end": END},
+    )
+    workflow.add_edge("remediate", END)
     return workflow.compile(checkpointer=InMemorySaver())

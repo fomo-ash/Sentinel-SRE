@@ -17,24 +17,30 @@ from sentinel.schemas import (
 
 _WARNING = (
     "Approval authorizes the single synthetic action shown in the proposal. "
-    "No action is executed by the current workflow."
+    "In simulated remediation mode, the local action runs after this decision "
+    "is recorded."
 )
 
 
-def mark_awaiting_approval(state: InvestigationState) -> dict:
+def mark_awaiting_approval(state: InvestigationState, config: RunnableConfig) -> dict:
     """Checkpoint a pending status before the interrupting node runs."""
     proposal = state.get("action_proposal")
     if proposal is None or state.get("approval_decision") is not None:
         raise ValueError("Approval requires one pending proposal")
     validate_action_proposal(proposal, state)
-    return {"remediation_outcome": "awaiting_approval"}
+    mode = config.get("configurable", {}).get("remediation_mode")
+    if mode not in ("approval", "simulated"):
+        raise ValueError("Approval requires an explicit remediation mode")
+    return {"remediation_outcome": "awaiting_approval", "approval_mode": mode}
 
 
 def approval(state: InvestigationState, config: RunnableConfig) -> dict:
-    """Pause for an explicit response, then record it without any action call."""
+    """Pause for an explicit response and checkpoint it before any action call."""
     configurable = config.get("configurable", {})
-    if configurable.get("remediation_mode") != "approval":
-        raise ValueError("Approval resume requires approval mode")
+    if state.get("approval_mode") not in ("approval", "simulated") or (
+        configurable.get("remediation_mode") != state["approval_mode"]
+    ):
+        raise ValueError("Approval resume requires approval mode from the checkpoint")
     proposal = state.get("action_proposal")
     if proposal is None or state.get("remediation_outcome") != "awaiting_approval":
         raise ValueError("Approval requires a checkpointed pending proposal")
