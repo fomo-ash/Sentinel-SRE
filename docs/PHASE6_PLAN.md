@@ -1,6 +1,6 @@
 # Phase 6 implementation plan: human approval and simulated remediation
 
-Status: **Tasks 1–7 implemented; Task 8 planned**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
+Status: **Tasks 1–7 complete; Task 8 implemented with human acceptance pending**. Phase 6 remains opt-in and local. The existing classification-only path and simulated investigation path keep their current behavior. This plan defines eight reviewable tasks in implementation order. It proposes no real infrastructure access, credentials, or automatic remediation.
 
 ## Task checklist
 
@@ -114,10 +114,11 @@ Here `config` is the exact `thread_id`, `investigation_mode="simulated"`, and `r
 - Add a local demonstration flow that starts an opt-in simulated investigation, prints the pending proposal, accepts an explicit approve or reject response from a human, and resumes the same thread. Do not auto-approve via a CLI flag, environment variable, model output, or canned example. Show how to inspect the checkpoint and report without displaying secrets.
 - Document the local-only action and receipt contracts, process-local reset behavior, exact run commands, observed fixture IDs, and failure handling. Record an acceptance review with fixture versions, commands and outcomes, approval and rejection traces, action counts, verification results, and limits. Update status only after the behavior exists; keep Phase 6 marked planned until then.
 - **Done when:** a reviewer can run the complete approve, reject, and failed-verification paths locally and can see in the record that no action occurred before an explicit human decision.
+- **Implementation ready:** `python -m sentinel.cli --simulated-remediation` runs only in an interactive terminal, prints the checkpointed proposal and warning, collects typed approve/reject input plus an operator ID, and resumes the same in-memory thread. The default CLI stays read-only. [PHASE6_IMPLEMENTATION.md](PHASE6_IMPLEMENTATION.md) documents the flow and [PHASE6_REVIEW.md](../python/evaluation/PHASE6_REVIEW.md) records Python, Go, fake-client, and loopback rejection checks. A live eligible proposal is paused for a human decision; the checklist remains open until that acceptance trace is recorded.
 
 ## Test files — separate from the eight implementation tasks
 
-The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`; Task 4 added the two Go remediation test files and extended `diagnostics_test.go`; Task 5 added `test_remediation.py`; Task 6 added `test_remediation_graph.py` and extended `test_graph.py`; Task 7 added `test_verification.py` and extended `test_schemas.py`, `test_remediation_graph.py`, and `test_remediation_proposal.py`.
+The files below are **tests to add or extend during implementation**. No test file is part of a task's implementation-file list above. Task 1 extended `test_schemas.py` and `test_graph.py`; Task 2 added `test_remediation_proposal.py`; Task 3 added `test_approval.py`; Task 4 added the two Go remediation test files and extended `diagnostics_test.go`; Task 5 added `test_remediation.py`; Task 6 added `test_remediation_graph.py` and extended `test_graph.py`; Task 7 added `test_verification.py` and extended `test_schemas.py`, `test_remediation_graph.py`, and `test_remediation_proposal.py`; Task 8 added `test_cli.py`.
 
 | Test file | Required coverage |
 | --- | --- |
@@ -128,6 +129,7 @@ The files below are **tests to add or extend during implementation**. No test fi
 | `python/tests/test_remediation.py` | Client allowlist, loopback restriction, response validation, lost POST response and receipt lookup, no blind retry. |
 | `python/tests/test_remediation_graph.py` | Full graph routes: default off, pending interrupt, rejection, approval, repeated resume/replay, execution failure/unknown, and unchanged severity. |
 | `python/tests/test_verification.py` | Fresh incident read, matching receipt and observation, stale/missing/unhealthy/invalid/timeout results, and truthful reports. |
+| `python/tests/test_cli.py` | Interactive proposal display, explicit approve/reject input, invalid and closed input, default read-only mode, and terminal TTY gate. |
 | `services/mock-service/internal/incidents/remediation_test.go` | Atomic effect and receipt, same-ID replay, conflicting reuse, unrelated fixture unchanged, baseline immutability. |
 | `services/mock-service/internal/api/remediation_test.go` | Local HTTP request/response contracts, method and body validation, approval reference requirement, stable errors, receipt lookup. |
 | `services/mock-service/internal/api/diagnostics_test.go` | Pre-action and post-action health reads, with unrelated incident and process health unchanged. |

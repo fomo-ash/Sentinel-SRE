@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, optional OpenAI classification and diagnosis routes, opt-in historical retrieval, in-memory checkpoints, a local Go service with synthetic incident health, metrics, and logs reads, and a bounded Python investigation loop. The default investigated route uses deterministic diagnosis; the model route requires explicit opt-in and a provider key. A narrow database login rejection can be supported from current health and log evidence; other observations remain inconclusive. The Go mock service has one local synthetic action and receipt ledger. An opt-in Python graph route can call it only after a checkpointed human approval, then reads incident health again and reports whether recovery was verified. The local operator flow and acceptance review remain planned. The current code is not production ready.
+Sentinel is an AI SRE agent for **simulated** incidents, designed with production-grade engineering practices. The current code has typed incident state, input validation, a deterministic classification baseline, optional OpenAI classification and diagnosis routes, opt-in historical retrieval, in-memory checkpoints, a local Go service with synthetic incident health, metrics, and logs reads, and a bounded Python investigation loop. The default investigated route uses deterministic diagnosis; the model route requires explicit opt-in and a provider key. A narrow database login rejection can be supported from current health and log evidence; other observations remain inconclusive. The Go mock service has one local synthetic action and receipt ledger. An opt-in Python graph route can call it only after a checkpointed human approval, then reads incident health again and reports whether recovery was verified. The interactive operator flow is implemented; its human-operated approval review is pending. The current code is not production ready.
 
 ## Prerequisites
 
@@ -113,7 +113,18 @@ python -m pip install -e .
 python -m sentinel.cli --id diag-degraded --service api --summary "API requests are slow for several users"
 ```
 
-The CLI prints final policy severity, current-incident evidence with stable source references, diagnostic failures, the number of actual HTTP attempts, total diagnostic latency, a stop reason, and a structured diagnosis. `diag-db-auth` for `api` demonstrates a `supported` database login rejection with health and log citations; the other original fixtures remain `inconclusive`. The rule identifies the observed failure mechanism, while why the login was rejected remains unresolved. `unknown` severity is possible even when diagnostics show degradation because severity policy uses the reported incident facts, not the diagnostic fixture. The available fixture IDs are `diag-healthy`, `diag-degraded`, `diag-db-auth`, and the separate Phase 5 challenge `diag-db-auth-alt` for `api`, and `diag-missing` and `diag-unhealthy` for `worker`. Each CLI run uses a fresh in-memory checkpoint thread and changes no service state.
+The default CLI prints final policy severity, current-incident evidence with stable source references, diagnostic failures, the number of actual HTTP attempts, total diagnostic latency, a stop reason, and a structured diagnosis. `diag-db-auth` for `api` demonstrates a `supported` database login rejection with health and log citations; the other original fixtures remain `inconclusive`. The rule identifies the observed failure mechanism, while why the login was rejected remains unresolved. `unknown` severity is possible even when diagnostics show degradation because severity policy uses the reported incident facts, not the diagnostic fixture. The available fixture IDs are `diag-healthy`, `diag-degraded`, `diag-db-auth`, and the separate Phase 5 challenge `diag-db-auth-alt` for `api`, and `diag-missing` and `diag-unhealthy` for `worker`. Each CLI run uses a fresh in-memory checkpoint thread. This default command changes no service state.
+
+### Review a local synthetic action
+
+With the Go service running, start the operator flow in an **interactive terminal**:
+
+```powershell
+cd python
+python -m sentinel.cli --id diag-db-auth --service api --summary "Investigate synthetic API database login rejection" --simulated-remediation
+```
+
+The CLI shows the complete proposal and a pending checkpoint with no approval or action receipt. It waits for a typed `approve` or `reject` decision and a nonblank operator ID. A rejection ends without an action. Approval can apply only the local synthetic database-login restoration, then a fresh incident health read determines whether recovery was verified. The command refuses redirected input and has no auto-approval option. Keep the process open through the decision because checkpoints are in memory. See the [Phase 6 operator guide](docs/PHASE6_IMPLEMENTATION.md) and [acceptance review](python/evaluation/PHASE6_REVIEW.md); a human-operated approval trace is still pending.
 
 Python callers can also inject `HTTPDiagnosticClient()` into `build_graph(diagnostic_client=client)` and invoke with `{"configurable": {"thread_id": "unique-id", "investigation_mode": "simulated"}}`. Omitting `investigation_mode` keeps the classification-only route. The diagnostic client is the only network component in this route, and it accepts loopback HTTP origins only.
 
